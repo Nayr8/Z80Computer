@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Z80CPU", "Z80CPUEmulator\Z80CPU.csproj", "{C7F96F31-531B-4826-82A1-F76097BB768C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Z80CPUTest", "Z80CPUTest\Z80CPUTest.csproj", "{B979F6DC-BCB8-48C1-BE2A-E50A1EB32394}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C7F96F31-531B-4826-82A1-F76097BB768C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7F96F31-531B-4826-82A1-F76097BB768C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7F96F31-531B-4826-82A1-F76097BB768C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7F96F31-531B-4826-82A1-F76097BB768C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B979F6DC-BCB8-48C1-BE2A-E50A1EB32394}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B979F6DC-BCB8-48C1-BE2A-E50A1EB32394}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B979F6DC-BCB8-48C1-BE2A-E50A1EB32394}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B979F6DC-BCB8-48C1-BE2A-E50A1EB32394}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DA456569-45FD-488F-B45C-08B1BD3F6B84}
+	EndGlobalSection
+EndGlobal
