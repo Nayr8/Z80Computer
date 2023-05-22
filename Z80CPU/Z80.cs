@@ -88,7 +88,7 @@ namespace Z80CPUEmulator
                 case Opcode.IncrementH: Registers.H = Increment(Registers.H); break;
                 case Opcode.DecrementH: Registers.H = Decrement(Registers.H); break;
                 case Opcode.LoadImmediateToH: Registers.H = ReadNextByte(); break;
-                case Opcode.AdjustAForBCDAddAndSub: throw new NotImplementedException();
+                case Opcode.AdjustAForBCDAddAndSub: AdjustAForBCDAddAndSub(); break;
                 case Opcode.JumpRelativeIfZero: JumpRelativeIf(Registers.Flags.Zero, (sbyte)ReadNextByte()); break;
                 case Opcode.AddHLToHL: Registers.HL = Add(Registers.HL, Registers.HL); break;
                 case Opcode.LoadHLFromImmediateAddress: Registers.HL = ReadWordFromAddress(ReadNextWord()); break;
@@ -333,6 +333,36 @@ namespace Z80CPUEmulator
                 case Opcode.Reset0x38: Call(true, 0x38); break;
             };
         }
+
+        #region BCD
+        public void AdjustAForBCDAddAndSub()
+        {
+            if (!Registers.Flags.AddSubtract)
+            {
+                if (Registers.Flags.Carry || Registers.A > 0x99)
+                {
+                    Registers.A += 0x60;
+                    Registers.Flags.Carry = true;
+                }
+                if (Registers.Flags.HalfCarry || (Registers.A & 0x0F) > 0x09)
+                {
+                    Registers.A += 0x06;
+                }
+            } else
+            {
+                if (Registers.Flags.Carry)
+                {
+                    Registers.A -= 0x60;
+                }
+                if (Registers.Flags.HalfCarry)
+                {
+                    Registers.A -= 0x06;
+                }
+            }
+            Registers.Flags.Zero = Registers.A == 0;
+            Registers.Flags.HalfCarry = false;
+        }
+        #endregion
 
         #region Looped Instructions
         private void HandleLoopedInstruction()
@@ -1272,12 +1302,30 @@ namespace Z80CPUEmulator
         #region Decimal
         private void LeftRotateDecimal()
         {
-            throw new NotImplementedException();
+            byte temp = (byte)(Registers.A & 0x0F);
+            Registers.A &= 0xF0;
+            Registers.A |= (byte)(Memory.ReadByte(Registers.HL) >> 4);
+            Memory.WriteByte(Registers.HL, (byte)((Memory.ReadByte(Registers.HL) << 4) | temp));
+
+
+            Registers.Flags.AddSubtract = false;
+            Registers.Flags.HalfCarry = false;
+            SetStateFlags(Memory.ReadByte(Registers.HL));
+            Registers.Flags.Parity = DetectParity(Memory.ReadByte(Registers.HL));
         }
 
         private void RightRotateDecimal()
         {
-            throw new NotImplementedException();
+            byte temp = (byte)((Registers.A & 0x0F) << 4);
+            Registers.A &= 0xF0;
+            Registers.A |= (byte)(Memory.ReadByte(Registers.HL) & 0x0F);
+            Memory.WriteByte(Registers.HL, (byte)((Memory.ReadByte(Registers.HL) >> 4) | temp));
+
+
+            Registers.Flags.AddSubtract = false;
+            Registers.Flags.HalfCarry = false;
+            SetStateFlags(Memory.ReadByte(Registers.HL));
+            Registers.Flags.Parity = DetectParity(Memory.ReadByte(Registers.HL));
         }
         #endregion
     }
