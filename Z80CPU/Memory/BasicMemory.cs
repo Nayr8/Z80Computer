@@ -20,14 +20,6 @@ namespace Z80CPUEmulator.Memory
             _data[address] = value;
         }
 
-        public object Clone()
-        {
-            return new BasicMemory()
-            {
-                _data = (byte[])_data.Clone()
-            };
-        }
-
         public static bool operator ==(BasicMemory lhs, BasicMemory rhs) => lhs.Equals(rhs);
         public static bool operator !=(BasicMemory lhs, BasicMemory rhs) => !(lhs == rhs);
         public override bool Equals(object? obj)

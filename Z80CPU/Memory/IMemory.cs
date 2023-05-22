@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Z80CPUEmulator.Memory
 {
-    public interface IMemory : ICloneable
+    public interface IMemory
     {
         public byte ReadByte(int address);
         public void WriteByte(int address, byte value);
