@@ -867,7 +867,7 @@ namespace Z80CPUEmulator
                 case MiscOpcode.MoveIncrement: MoveIncrement(); break;
                 case MiscOpcode.CompareIncrement: CompareIncrement(); break;
                 case MiscOpcode.InputIncrement: InputIncrement(); break;
-                case MiscOpcode.OuputIncrement: OutputIncrement(); break;
+                case MiscOpcode.OutputIncrement: OutputIncrement(); break;
                 case MiscOpcode.MoveDecrement: MoveDecrement(); break;
                 case MiscOpcode.CompareDecrement: CompareDecrement(); break;
                 case MiscOpcode.InputDecrement: InputDecrement(); break;

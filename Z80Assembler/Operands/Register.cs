@@ -5,5 +5,8 @@
         A, B, C, D, E, H, L,
         AF, BC, DE, HL,
         SP,
+        
+        NZ, NC, PO, P,
+        Z, PE, M
     }
 }

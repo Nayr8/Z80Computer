@@ -60,7 +60,7 @@ namespace Z80CPUEmulator.Instructions
             MoveIncrement = 0xA0,
             CompareIncrement = 0xA1,
             InputIncrement = 0xA2,
-            OuputIncrement = 0xA3,
+            OutputIncrement = 0xA3,
             MoveDecrement = 0xA8,
             CompareDecrement = 0xA9,
             InputDecrement = 0xAA,

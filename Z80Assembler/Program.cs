@@ -2,7 +2,7 @@
 
 using Z80Assembler;
 
-string text = @"
+const string text = @"
 main:
     ld a, 13
 loop:
@@ -14,8 +14,8 @@ loop:
 
 Assembler assembler = new(text);
 assembler.Assemble();
-/*
+
 foreach (string line in assembler.Lines)
 {
     Console.WriteLine(line);
-}*/
+}
