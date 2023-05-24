@@ -1,158 +1,281 @@
-﻿
+using System.Globalization;
+using Z80Assembler.Error;
+using Z80Assembler.Token;
 
-using System.Text.Json.Serialization;
-using Z80Assembler.Operands;
+namespace Z80Assembler;
 
-namespace Z80Assembler
+public class Assembler
 {
-    public class Assembler
+    private readonly string _code;
+    private int _cursor = 0;
+    private int _line = 0;
+    private int _column = 0;
+    private bool _end = false;
+
+    private List<IToken> _tokens = new List<IToken>();
+    private StringBuffer _buffer = new StringBuffer(16);
+
+    private List<SyntaxError> _errors = new List<SyntaxError>();
+
+    public Assembler(string code)
     {
-        private IEnumerable<string> _lines;
-        public IEnumerable<string> Lines { get => _lines; }
+        // Normalise line endings
+        code = code.Replace("\r\n", "\n");
+        code = code.Replace("\r", "\n");
+        
+        _code = code;
+    }
 
-        public Assembler(string code)
+    public void Tokenize()
+    {
+        while (!_end)
         {
-            _lines = SanatiseInput(code);
+            _tokens.Add(NextToken());
         }
 
-        public IEnumerable<Statement> Assemble()
+        if (_tokens.Last().GetType() == typeof(BrokenToken))
         {
-            List<Statement> statements = new();
-            foreach (var line in _lines)
+            _tokens.RemoveAt(_tokens.Count - 1);
+        }
+    }
+
+    private char Next()
+    {
+        if (_code[_cursor] == ';')
+        {
+            while (_cursor < _code.Length && Peek() != '\n')
             {
-                statements.Add(AssembleLine(line));
+                ++_cursor;
+                ++_column;
             }
-            return statements;
+            if (_cursor == _code.Length)
+            {
+                _end = true;
+            }
+            NewLine();
+            return '\n';
+        }
+        char value = _code[_cursor];
+        ++_cursor;
+        ++_column;
+        if (_cursor == _code.Length)
+        {
+            _end = true;
+        }
+        if (value == '\n')
+        {
+            NewLine();
         }
 
-        private static Statement AssembleLine(string line)
+        return value;
+    }
+
+    private char Peek()
+    {
+        return _end ? '\0' : _code[_cursor];
+    }
+
+    private void NewLine()
+    {
+        ++_line;
+        _column = -1;
+    }
+
+    private IToken NextToken()
+    {
+        char value;
+        do
         {
-            string? label = null;
-            var temp = line.Split(':');
-            if (temp.Length == 2 )
+            if (_end)
             {
-                label = temp[0].Trim();
-                line = temp[1].Trim();
+                return new BrokenToken();
             }
+            value = Next();
+        } while (value is ' ' or '\n');
 
-            string[] statementParts = line.Split(new char[] { ' ', ',' }).Where((text) => text.Length != 0).ToArray();
-            if (statementParts.Length > 3 )
+        IToken token = value switch
+        {
+            ',' => new CommaToken(),
+            '(' => new LBracketToken(),
+            ')' => new RBracketToken(),
+            '+' => new PlusToken(),
+            '-' => new MinusToken(),
+            '@' => ReadConstToken(),
+            >= '0' and <= '9' => ReadIntegerToken(value),
+            >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(value),
+            _ => InvalidInitialCharToken(value)
+        };
+        _buffer.Clear();
+        
+        return token;
+    }
+
+    private IToken InvalidInitialCharToken(char start)
+    {
+        _errors.Add(new SyntaxError(_line, _column, start.ToString()));
+        return new BrokenToken();
+    }
+
+    private IToken ReadConstToken()
+    {
+        while (IsAlphanumeric(Peek()))
+        {
+            if (_buffer.Add(Next())) continue;
+            
+            _errors.Add(new SyntaxError(_line, _column));
+            while (IsAlphanumeric(Peek()))
             {
-                throw new Exception();
+                Next();
             }
+            return new BrokenToken();
+        }
 
-            IOperand[] operands = new IOperand[statementParts.Length - 1];
-            if (statementParts.Length >= 2)
+        if (_buffer.Count == 0)
+        {
+            _errors.Add(new SyntaxError(_line, _column, "@"));
+        }
+
+        return new ConstToken(_buffer.ToString());
+    }
+
+    private IToken ReadIntegerToken(char start)
+    {
+        if (start == '0')
+        {
+            char next = Peek();
+            if (next == 'b')
             {
-                operands[0] = DecodeOperand(statementParts[1]);
-                if (statementParts.Length >= 3)
+                Next();
+                while (IsBinary(Peek()))
                 {
-                    operands[1] = DecodeOperand(statementParts[2]);
-                }
-            }
-
-            return new Statement(label, statementParts[0], operands);
-        }
-
-        private static IOperand DecodeOperand(string operand)
-        {
-            return operand switch
-            {
-                "a" => new RegisterOperand(Register.A),
-                "b" => new RegisterOperand(Register.B),
-                "c" => new RegisterOperand(Register.C),
-                "d" => new RegisterOperand(Register.D),
-                "e" => new RegisterOperand(Register.E),
-                "h" => new RegisterOperand(Register.H),
-                "l" => new RegisterOperand(Register.L),
-                "af" => new RegisterOperand(Register.AF),
-                "bc" => new RegisterOperand(Register.BC),
-                "de" => new RegisterOperand(Register.DE),
-                "hl" => new RegisterOperand(Register.HL),
-                "sl" => new RegisterOperand(Register.SP),
-                "nz" => new RegisterOperand(Register.NZ),
-                "nc" => new RegisterOperand(Register.NC),
-                "po" => new RegisterOperand(Register.PO),
-                "p" => new RegisterOperand(Register.P),
-                "z" => new RegisterOperand(Register.Z),
-                "pe" => new RegisterOperand(Register.PE),
-                "m" => new RegisterOperand(Register.M),
-                "(af)" => new RegisterAddressOperand(Register.AF),
-                "(bc)" => new RegisterAddressOperand(Register.BC),
-                "(de)" => new RegisterAddressOperand(Register.DE),
-                "(hl)" => new RegisterAddressOperand(Register.HL),
-                "(sl)" => new RegisterAddressOperand(Register.SP),
-                _ when IsValidLabel(operand) => new LabelOperand(operand),
-                _ when IsAddress(operand) => new AddressOperand(ParseNumber(operand.Split('(', ')')[1])),
-                _ =>  new LiteralOperand(ParseNumber(operand)),
-            };
-        }
-
-        private static int ParseNumber(string numberString)
-        {
-            if (int.TryParse(numberString, out int number))
-            {
-                return number;
-            }
-            if (numberString.Last() == 'h')
-            {
-                int.Parse(numberString.Split('h')[0], System.Globalization.NumberStyles.HexNumber);
-            }
-            if (numberString.StartsWith("0x"))
-            {
-                int.Parse(numberString.Split('x')[1], System.Globalization.NumberStyles.HexNumber);
-            }
-            throw new NotImplementedException();
-        }
-
-        private static bool IsAddress(string operand)
-        {
-            return operand.First() == '(' && operand.Last() == ')';
-        }
-
-        private static bool IsValidLabel(string operand)
-        {
-            foreach (var letter in operand)
-            {
-                if (!IsAlphanumeric(letter)) return false;
-            }
-            return IsLetter(operand[0]);
-        }
-
-        private static bool IsAlphanumeric(char c)
-        {
-            return IsLetter(c) || IsDigit(c);
-        }
-
-        private static bool IsLetter(char c)
-        {
-            return (c > 'a' && c < 'z') || (c > 'A' && c < 'Z');
-        }
-
-        private static bool IsDigit(char c)
-        {
-            return c > '0' && c < '9';
-        }
-
-        private static IEnumerable<string> SanatiseInput(string input)
-        {
-            string[] lines = input.ToLower().Split('\n');
-            List<string> newLines = new();
-            for (int i = 0; i < lines.Length; i++)
-            {
-                lines[i] = lines[i].Trim().Split(';')[0];
-                if (lines[i].Length != 0)
-                {
-                    if (lines[i].Last() == ':')
+                    if (_buffer.Add(Next())) continue;
+            
+                    _errors.Add(new SyntaxError(_line, _column, "0b" + _buffer));
+                    while (IsBinary(Peek()))
                     {
-                        newLines.Add(lines[i] + lines[i + 1].Trim().Split(';')[0]);
-                        i++;
-                        continue;
+                        Next();
                     }
-                    newLines.Add(lines[i]);
+                    return new BrokenToken();
                 }
+
+                if (_buffer.Count == 0)
+                {
+                    _errors.Add(new SyntaxError(_line, _column, "0b"));
+                }
+
+                return new IntegerToken(ParseBinary(_buffer.ToString()));
             }
-            return newLines;
+            if (next == 'x')
+            {
+                Next();
+                while (IsHex(Peek()))
+                {
+                    if (_buffer.Add(Next())) continue;
+            
+                    _errors.Add(new SyntaxError(_line, _column, "0x" + _buffer));
+                    while (IsHex(Peek()))
+                    {
+                        Next();
+                    }
+                    return new BrokenToken();
+                }
+
+                if (_buffer.Count == 0)
+                {
+                    _errors.Add(new SyntaxError(_line, _column, "0x"));
+                }
+                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber));
+            }
+        }
+
+        _buffer.Add(start);
+        
+        while (IsDigit(Peek()))
+        {
+            if (_buffer.Add(Next())) continue;
+            
+            _errors.Add(new SyntaxError(_line, _column));
+            while (IsDigit(Peek()))
+            {
+                Next();
+            }
+            return new BrokenToken();
+        }
+
+        return new IntegerToken(int.Parse(_buffer.ToString()));
+    }
+
+    private IToken ReadTextOrLabel(char start)
+    {
+        _buffer.Add(start);
+        while (IsAlphanumeric(Peek()))
+        {
+            if (_buffer.Add(Next())) continue;
+            
+            _errors.Add(new SyntaxError(_line, _column));
+            while (IsAlphanumeric(Peek()))
+            {
+                Next();
+            }
+            return new BrokenToken();
+        }
+
+        if (Peek() != ':') return new TextToken(_buffer.ToString());
+        Next();
+        return new LabelToken(_buffer.ToString());
+
+    }
+
+    private static bool IsAlphanumeric(char value)
+    {
+        return value is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '.';
+    }
+
+    private static bool IsDigit(char value)
+    {
+        return value is >= '0' and <= '9';
+    }
+
+    private static bool IsHex(char value)
+    {
+        return value is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F';
+    }
+
+    private static bool IsBinary(char value)
+    {
+        return value is '0' or '1';
+    }
+
+    private static int ParseBinary(string binary)
+    {
+        int value = 0;
+        foreach (var bit in binary.Select(charBit => charBit switch
+                 {
+                     '0' => 0,
+                     '1' => 1,
+                     _ => throw new FormatException()
+                 }))
+        {
+            value *= 2;
+            value += bit;
+        }
+
+        return value;
+    }
+    
+    public void DumpErrors()
+    {
+        foreach (var error in _errors)
+        {
+            Console.WriteLine(error);
+        }
+    }
+
+    public void DumpTokens()
+    {
+        foreach (var token in _tokens)
+        {
+            Console.WriteLine(token);
         }
     }
 }

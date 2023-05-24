@@ -1,21 +1,18 @@
-﻿
+﻿// See https://aka.ms/new-console-template for more information
+
 
 using Z80Assembler;
 
-const string text = @"
-main:
-    ld a, 13
-loop:
-    dec a ; Decrement A
-    jp nz, loop
+const string code = @"
+@zero 0
 
-    hlt
-";
+start: ; The start label
 
-Assembler assembler = new(text);
-assembler.Assemble();
 
-foreach (string line in assembler.Lines)
-{
-    Console.WriteLine(line);
-}
+; end comment";
+
+
+Assembler assembler = new(code);
+assembler.Tokenize();
+assembler.DumpErrors();
+assembler.DumpTokens();
