@@ -12,10 +12,15 @@ public class Assembler
     private int _column = 0;
     private bool _end = false;
 
-    private List<IToken> _tokens = new List<IToken>();
-    private StringBuffer _buffer = new StringBuffer(16);
+    private readonly List<IToken> _tokens = new List<IToken>();
+    private readonly StringBuffer _buffer = new StringBuffer(16);
+    private readonly List<SyntaxError> _errors = new List<SyntaxError>();
 
-    private List<SyntaxError> _errors = new List<SyntaxError>();
+    private int _tokenCursor = 0;
+
+    private readonly List<byte> _assembledCode = new List<byte>();
+    private readonly List<LabelLocation> _labels = new List<LabelLocation>();
+    private readonly Dictionary<string, int> _variables = new Dictionary<string, int>();
 
     public Assembler(string code)
     {
@@ -26,11 +31,24 @@ public class Assembler
         _code = code;
     }
 
+    public byte[] Assemble()
+    {
+        Tokenize();
+        AssembleToBinary();
+        InsertLabels();
+        return _assembledCode.ToArray();
+    }
+
     public void Tokenize()
     {
         while (!_end)
         {
-            _tokens.Add(NextToken());
+            IToken token = NextToken();
+            if (token.GetType() == typeof(NewLineToken) && _tokens.Count > 0 && _tokens.Last().GetType() == typeof(NewLineToken))
+            {
+                continue;
+            }
+            _tokens.Add(token);
         }
 
         if (_tokens.Last().GetType() == typeof(BrokenToken))
@@ -39,35 +57,17 @@ public class Assembler
         }
     }
 
-    private char Next()
+    #region Tokenize
+    
+    private void Consume()
     {
-        if (_code[_cursor] == ';')
+        if (Peek() == '\n')
         {
-            while (_cursor < _code.Length && Peek() != '\n')
-            {
-                ++_cursor;
-                ++_column;
-            }
-            if (_cursor == _code.Length)
-            {
-                _end = true;
-            }
             NewLine();
-            return '\n';
         }
-        char value = _code[_cursor];
         ++_cursor;
         ++_column;
-        if (_cursor == _code.Length)
-        {
-            _end = true;
-        }
-        if (value == '\n')
-        {
-            NewLine();
-        }
-
-        return value;
+        _end = _cursor >= _code.Length;
     }
 
     private char Peek()
@@ -83,51 +83,74 @@ public class Assembler
 
     private IToken NextToken()
     {
-        char value;
-        do
+        char value = Peek();
+        while (value is ' ')
         {
-            if (_end)
-            {
-                return new BrokenToken();
-            }
-            value = Next();
-        } while (value is ' ' or '\n');
+            Consume();
+            value = Peek();
+        }
 
         IToken token = value switch
         {
-            ',' => new CommaToken(),
-            '(' => new LBracketToken(),
-            ')' => new RBracketToken(),
-            '+' => new PlusToken(),
-            '-' => new MinusToken(),
+            ',' => ConsumeAndReturn(new CommaToken(_line, _column)),
+            '(' => ConsumeAndReturn(new LBracketToken(_line, _column)),
+            ')' => ConsumeAndReturn(new RBracketToken(_line, _column)),
+            '+' => ConsumeAndReturn(new PlusToken(_line, _column)),
+            '-' => ConsumeAndReturn(new MinusToken(_line, _column)),
+            '\n' => ConsumeAndReturn(new NewLineToken(_line, _column)),
+            ';' => ConsumeComment(),
             '@' => ReadConstToken(),
-            >= '0' and <= '9' => ReadIntegerToken(value),
-            >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(value),
-            _ => InvalidInitialCharToken(value)
+            '\0' => new NewLineToken(_line, _column),
+            >= '0' and <= '9' => ReadIntegerToken(),
+            >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(),
+            _ => InvalidInitialCharToken()
         };
         _buffer.Clear();
         
         return token;
     }
 
-    private IToken InvalidInitialCharToken(char start)
+    private T ConsumeAndReturn<T>(T value)
     {
-        _errors.Add(new SyntaxError(_line, _column, start.ToString()));
-        return new BrokenToken();
+        Consume();
+        return value;
+    }
+
+    private IToken ConsumeComment()
+    {
+        do
+        {
+            Consume();
+        } while (Peek() is not '\n' and not '\0');
+
+        return NextToken();
+    }
+
+    private IToken InvalidInitialCharToken()
+    {
+        char value = Peek();
+        Consume();
+        _errors.Add(new SyntaxError(_line, _column, value.ToString()));
+        return new BrokenToken(_line, _column);
     }
 
     private IToken ReadConstToken()
     {
+        Consume();
         while (IsAlphanumeric(Peek()))
         {
-            if (_buffer.Add(Next())) continue;
+            if (_buffer.Add(Peek()))
+            {
+                Consume();
+                continue;
+            }
             
             _errors.Add(new SyntaxError(_line, _column));
             while (IsAlphanumeric(Peek()))
             {
-                Next();
+                Consume();
             }
-            return new BrokenToken();
+            return new BrokenToken(_line, _column);
         }
 
         if (_buffer.Count == 0)
@@ -135,27 +158,32 @@ public class Assembler
             _errors.Add(new SyntaxError(_line, _column, "@"));
         }
 
-        return new ConstToken(_buffer.ToString());
+        return new VariableToken(_buffer.ToString(), _line, _column);
     }
 
-    private IToken ReadIntegerToken(char start)
+    private IToken ReadIntegerToken()
     {
+        char start = Peek();
         if (start == '0')
         {
             char next = Peek();
             if (next == 'b')
             {
-                Next();
+                Consume();
                 while (IsBinary(Peek()))
                 {
-                    if (_buffer.Add(Next())) continue;
+                    if (_buffer.Add(Peek()))
+                    {
+                        Consume();
+                        continue;
+                    }
             
                     _errors.Add(new SyntaxError(_line, _column, "0b" + _buffer));
                     while (IsBinary(Peek()))
                     {
-                        Next();
+                        Consume();
                     }
-                    return new BrokenToken();
+                    return new BrokenToken(_line, _column);
                 }
 
                 if (_buffer.Count == 0)
@@ -163,28 +191,32 @@ public class Assembler
                     _errors.Add(new SyntaxError(_line, _column, "0b"));
                 }
 
-                return new IntegerToken(ParseBinary(_buffer.ToString()));
+                return new IntegerToken(ParseBinary(_buffer.ToString()), _line, _column);
             }
             if (next == 'x')
             {
-                Next();
+                Consume();
                 while (IsHex(Peek()))
                 {
-                    if (_buffer.Add(Next())) continue;
+                    if (_buffer.Add(Peek()))
+                    {
+                        Consume();
+                        continue;
+                    }
             
                     _errors.Add(new SyntaxError(_line, _column, "0x" + _buffer));
                     while (IsHex(Peek()))
                     {
-                        Next();
+                        Consume();
                     }
-                    return new BrokenToken();
+                    return new BrokenToken(_line, _column);
                 }
 
                 if (_buffer.Count == 0)
                 {
                     _errors.Add(new SyntaxError(_line, _column, "0x"));
                 }
-                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber));
+                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber), _line, _column);
             }
         }
 
@@ -192,40 +224,144 @@ public class Assembler
         
         while (IsDigit(Peek()))
         {
-            if (_buffer.Add(Next())) continue;
+            if (_buffer.Add(Peek()))
+            {
+                Consume();
+                continue;
+            }
             
             _errors.Add(new SyntaxError(_line, _column));
             while (IsDigit(Peek()))
             {
-                Next();
+                Consume();
             }
-            return new BrokenToken();
+            return new BrokenToken(_line, _column);
         }
 
-        return new IntegerToken(int.Parse(_buffer.ToString()));
+        return new IntegerToken(int.Parse(_buffer.ToString()), _line, _column);
     }
 
-    private IToken ReadTextOrLabel(char start)
+    private IToken ReadTextOrLabel()
     {
-        _buffer.Add(start);
+        _buffer.Add(Peek());
+        Consume();
         while (IsAlphanumeric(Peek()))
         {
-            if (_buffer.Add(Next())) continue;
+            if (_buffer.Add(Peek()))
+            {
+                Consume();
+                continue;
+            }
             
             _errors.Add(new SyntaxError(_line, _column));
             while (IsAlphanumeric(Peek()))
             {
-                Next();
+                Consume();
             }
-            return new BrokenToken();
+            return new BrokenToken(_line, _column);
         }
 
-        if (Peek() != ':') return new TextToken(_buffer.ToString());
-        Next();
-        return new LabelToken(_buffer.ToString());
+        if (Peek() != ':') return new TextToken(_buffer.ToString(), _line, _column);
+        Consume();
+        return new LabelToken(_buffer.ToString(), _line, _column);
 
     }
+    
+    #endregion
 
+    public void AssembleToBinary()
+    {
+        if (_tokens.Count == 0)
+        {
+            return;
+        }
+
+        while (PeekToken() is not null)
+        {
+            AssembleLine();
+        }
+    }
+
+    #region AssembleToBinary
+
+    private IToken? PeekToken()
+    {
+        return _end ? _tokens[_tokenCursor] : null;
+    }
+
+    private IToken? TakeToken()
+    {
+        IToken? token = PeekToken();
+        ConsumeToken();
+        return token;
+    }
+
+    private void ConsumeToken()
+    {
+        ++_tokenCursor;
+        _end = _tokenCursor < _tokens.Count;
+    }
+
+    private void ConsumeTokenLine()
+    {
+        while (PeekToken() is not NewLineToken or null)
+        {
+            ConsumeToken();
+        }
+    }
+
+    private void AssembleLine()
+    {
+        switch (TakeToken())
+        {
+            case LabelToken token:
+                _labels.Add(new LabelLocation(token.Label, token.Line, token.Column));
+                break;
+            case VariableToken token:
+                int value = ResolveMath();
+                _variables.Add(token.Label, value);
+                break;
+            case TextToken token:
+                AssembleInstruction(token);
+                break;
+            case { } token:
+                ConsumeTokenLine();
+                _errors.Add(new SyntaxError(token));
+                break;
+        }
+    }
+
+    private int ResolveMath()
+    {
+        throw new NotImplementedException();
+    }
+
+    private void AssembleInstruction(TextToken token)
+    {
+        switch (token.Text.Length)
+        {
+            case 2: // TODO
+                break;
+            case 3: // TODO
+                break;
+            case 4: // TODO
+                break;
+            default:
+                ConsumeTokenLine();
+                _errors.Add(new SyntaxError(token));
+                break;
+        }
+    }
+
+    #endregion
+
+    public void InsertLabels()
+    {
+        
+    }
+
+    #region Helpers
+    
     private static bool IsAlphanumeric(char value)
     {
         return value is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '.';
@@ -263,6 +399,8 @@ public class Assembler
         return value;
     }
     
+    #endregion
+    
     public void DumpErrors()
     {
         foreach (var error in _errors)
@@ -275,7 +413,7 @@ public class Assembler
     {
         foreach (var token in _tokens)
         {
-            Console.WriteLine(token);
+            Console.Write(token.ToString() + ' ');
         }
     }
 }

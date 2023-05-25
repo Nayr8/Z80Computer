@@ -1,10 +1,10 @@
 namespace Z80Assembler.Token;
 
-public class ConstToken : IToken
+public class VariableToken : IToken
 {
     public string Label { get; }
 
-    public ConstToken(string label)
+    public VariableToken(string label, int line, int column) : base(line, column)
     {
         Label = label;
     }
