@@ -13,6 +13,4 @@ start: ; The start label
 
 
 Assembler assembler = new(code);
-assembler.Tokenize();
-assembler.DumpErrors();
-assembler.DumpTokens();
+byte[] binary = assembler.Assemble();
