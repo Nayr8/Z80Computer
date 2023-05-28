@@ -370,7 +370,6 @@ public class Assembler
     {
         Consume();
         IToken? nextToken = Peek();
-        bool offset = false;
         switch (nextToken)
         {
             case TextToken { Text: "bc" }: 
@@ -391,32 +390,84 @@ public class Assembler
                     WriteByte(0x12); return;
                 }
                 break;
-            case TextToken { Text: "hl" }: AssembleLdAddressHL(); return;
+            case TextToken { Text: "hl" }: AssembleLdAddressHl(); return;
             case TextToken { Text: "ix" }:
-                WriteByte(0xDD); offset = true; break;
+                WriteByte(0xDD); break;
             case TextToken { Text: "iy" }:
-                WriteByte(0xFD); offset = true; break;
+                WriteByte(0xFD); break;
             default:
                 AssembleLdAddressImmediate(nextToken); return;
 
         }
 
-        if (offset)
+        Consume();
+        if (!AssertNextToken<PlusToken>()) { return; } Consume();
+        int? offset = ResolveMath();
+        if (offset is null) { TokenError(nextToken); return; } Consume();
+        if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+        if (!AssertNextToken<CommaToken>()) { return; } Consume();
+        switch (Peek())
         {
-            // TODO
+            case TextToken { Text: "b" }: Consume(); WriteByte(0x70); WriteByte((byte)offset); return;
+            case TextToken { Text: "c" }: Consume(); WriteByte(0x71); WriteByte((byte)offset); return;
+            case TextToken { Text: "d" }: Consume(); WriteByte(0x72); WriteByte((byte)offset); return;
+            case TextToken { Text: "e" }: Consume(); WriteByte(0x73); WriteByte((byte)offset); return;
+            case TextToken { Text: "h" }: Consume(); WriteByte(0x74); WriteByte((byte)offset); return;
+            case TextToken { Text: "l" }: Consume(); WriteByte(0x75); WriteByte((byte)offset); return;
+            case TextToken { Text: "a" }: Consume(); WriteByte(0x77); WriteByte((byte)offset); return;
+            default:
+                int? value = ResolveMath();
+                if (value is null) { TokenError(nextToken); return; }
+                WriteByte(0x76);
+                WriteByte((byte)offset);
+                WriteByte((byte)value);
+                return;
         }
-        
-        TokenError(nextToken);
     }
 
-    private void AssembleLdAddressHL()
+    private void AssembleLdAddressHl()
     {
-        
+        Consume();
+        if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+        if (!AssertNextToken<CommaToken>()) { return; } Consume();
+        IToken? nextToken = Peek();
+        switch (nextToken)
+        {
+            case TextToken { Text: "b" }: WriteByte(0x70); return;
+            case TextToken { Text: "c" }: WriteByte(0x71); return;
+            case TextToken { Text: "d" }: WriteByte(0x72); return;
+            case TextToken { Text: "e" }: WriteByte(0x73); return;
+            case TextToken { Text: "h" }: WriteByte(0x74); return;
+            case TextToken { Text: "l" }: WriteByte(0x75); return;
+            case TextToken { Text: "a" }: WriteByte(0x77); return;
+            default:
+                int? value = ResolveMath();
+                if (value is null) { TokenError(nextToken); return; }
+                WriteByte(0x36);
+                WriteByte((byte)value);
+                return;
+        }
     }
 
     private void AssembleLdAddressImmediate(IToken? token)
     {
+        int? value = ResolveMath();
+        if (value is null) { TokenError(token); return; }
+        if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+        if (!AssertNextToken<CommaToken>()) { return; } Consume();
         
+        IToken? nextToken = Peek();
+        switch (nextToken)
+        {
+            case TextToken { Text: "hl" }: WriteByte(0x22); WriteByte((byte)value); return;
+            case TextToken { Text: "a" }: WriteByte(0x32); WriteByte((byte)value); return;
+            case TextToken { Text: "bc" }: WriteByte(0xED); WriteByte(0x43); WriteByte((byte)value); return;
+            case TextToken { Text: "de" }: WriteByte(0xED); WriteByte(0x53); WriteByte((byte)value); return;
+            case TextToken { Text: "sp" }: WriteByte(0xED); WriteByte(0x73); WriteByte((byte)value); return;
+            case TextToken { Text: "ix" }: WriteByte(0xDD); WriteByte(0x22); WriteByte((byte)value); return;
+            case TextToken { Text: "iy" }: WriteByte(0xFD); WriteByte(0x22); WriteByte((byte)value); return;
+        }
+        TokenError(token);
     }
 
     #endregion
