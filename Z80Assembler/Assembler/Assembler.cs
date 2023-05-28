@@ -67,7 +67,7 @@ public class Assembler
 
     private IToken? Peek()
     {
-        return _cursor >= _tokens.Count ? _tokens[_cursor] : null;
+        return _cursor < _tokens.Count ? _tokens[_cursor] : null;
     }
 
     private IToken? Take()
@@ -84,7 +84,7 @@ public class Assembler
 
     private void ConsumeTokenLine()
     {
-        while (Peek() is not NewLineToken or null)
+        while (Peek() is not NewLineToken and not null)
         {
             Consume();
         }
@@ -126,17 +126,30 @@ public class Assembler
     private int? ResolveMath()
     {
         // TODO add actual maths
-        return Peek() switch
+        int? result;
+        switch (Peek())
         {
-            VariableToken variableToken => (_variables.TryGetValue(variableToken.Label, out int value) ? value : null),
-            IntegerToken integerToken => integerToken.Integer,
-            _ => null
-        };
+            case VariableToken variableToken:
+                result = (_variables.TryGetValue(variableToken.Label, out int value) ? value : null); break;
+            case IntegerToken integerToken: result = integerToken.Integer; break;
+            case MinusToken: Consume();
+                if (Peek() is IntegerToken token)
+                {
+                    result = -token.Integer; break;
+                }
+                result = null; break;
+            
+            default: result = null; break;
+        }
+        if (result is not null)
+        {
+            Consume();
+        }
+        return result;
     }
 
     private void AssembleInstruction(TextToken token)
     {
-        Consume();
         switch (token.Text.Length)
         {
             case 2: Assemble2CharInstruction(token.Text);
@@ -218,7 +231,7 @@ public class Assembler
                 if (AssembleLd1ByteRegisterInstruction(0x68, 0x6E)) { return; }
                 break;
             case { Text: "a" }:
-                if (AssembleLd1ByteRegisterInstruction(0x78, 0x7E)) { return; }
+                if (AssembleLd1ByteRegisterAInstruction(0x78, 0x7E)) { return; }
                 break;
             case { Text: "ixh" }: WriteByte(0xDD);
                 if (AssembleLd1ByteRegisterInstruction(0x60, 0x66)) { return; }
@@ -234,6 +247,31 @@ public class Assembler
                 break;
         }
         TokenError(textToken);
+    }
+
+    private bool AssembleLd1ByteRegisterAInstruction(byte immediateInstruction, byte addressInstruction)
+    {
+        if (!AssertNextToken<CommaToken>()) { return false; } Consume();
+        if (Peek() is LBracketToken)
+        {
+            Consume();
+            switch (Peek())
+            {
+                case TextToken { Text: "bc" }: Consume(); WriteByte(0x0A);
+                    if (Peek() is not RBracketToken) { return false; } Consume(); return true;
+                case TextToken { Text: "de" }: Consume(); WriteByte(0x0A);
+                    if (Peek() is not RBracketToken) { return false; } Consume(); return true;
+            }
+            int? address = ResolveMath();
+            if (address is null)
+            {
+                return AssembleLd1ByteRegisterFromAddress(addressInstruction);
+            }
+            WriteAddress((ushort)address);
+            if (Peek() is not RBracketToken) { return false; } Consume(); return true;
+            
+        }
+        return AssembleLd1ByteRegisterFromImmediate(immediateInstruction);
     }
 
     private bool AssembleLd1ByteRegisterInstruction(byte immediateInstruction, byte addressInstruction)
@@ -383,7 +421,7 @@ public class Assembler
                 if (!AssertNextToken<CommaToken>()) { return; } Consume();
                 if (Peek() is TextToken { Text: "a" })
                 {
-                    WriteByte(0x02); return;
+                    WriteByte(0x02); Consume(); return;
                 }
                 break;
             case TextToken { Text: "de" }: 
@@ -392,7 +430,7 @@ public class Assembler
                 if (!AssertNextToken<CommaToken>()) { return; } Consume();
                 if (Peek() is TextToken { Text: "a" })
                 {
-                    WriteByte(0x12); return;
+                    WriteByte(0x12); Consume(); return;
                 }
                 break;
             case TextToken { Text: "hl" }: AssembleLdAddressHl(); return;
@@ -1198,9 +1236,9 @@ public class Assembler
         switch (nextToken)
         {
             case TextToken { Text: "a" }: AssembleAddToA(); return;
-            case TextToken { Text: "hl" }: address = true; return;
-            case TextToken { Text: "ix" }: WriteByte(0xDD); address = true; return;
-            case TextToken { Text: "iy" }: WriteByte(0xFD); address = true; return;
+            case TextToken { Text: "hl" }: address = true; break;
+            case TextToken { Text: "ix" }: WriteByte(0xDD); address = true; break;
+            case TextToken { Text: "iy" }: WriteByte(0xFD); address = true; break;
         }
 
         if (address)
@@ -1209,10 +1247,10 @@ public class Assembler
             if (!AssertNextToken<CommaToken>()) { return; } Consume();
             switch (Peek())
             {
-                case TextToken { Text: "bc" }: WriteByte(0x09); return;
-                case TextToken { Text: "de" }: WriteByte(0x19); return;
-                case TextToken { Text: "hl" }: WriteByte(0x29); return;
-                case TextToken { Text: "sp" }: WriteByte(0x39); return;
+                case TextToken { Text: "bc" }: Consume(); WriteByte(0x09); return;
+                case TextToken { Text: "de" }: Consume(); WriteByte(0x19); return;
+                case TextToken { Text: "hl" }: Consume(); WriteByte(0x29); return;
+                case TextToken { Text: "sp" }: Consume(); WriteByte(0x39); return;
             }
         }
         TokenError(nextToken);
@@ -2554,7 +2592,7 @@ public class Assembler
 
     private void AssertEndOfLine(IToken? token)
     {
-        if (token is not (NewLineToken or null)) return;
+        if (token is NewLineToken or null) return;
         TokenError(token);
     }
 
@@ -2577,6 +2615,11 @@ public class Assembler
     {
         
     }
+
+    public bool Errors()
+    {
+        return _errors.Count != 0;
+    }
     
     public void DumpErrors()
     {
@@ -2592,5 +2635,10 @@ public class Assembler
         {
             Console.Write(token.ToString() + ' ');
         }
+    }
+
+    public void AddVariable(string label, int value)
+    {
+        _variables.Add(label, value);
     }
 }

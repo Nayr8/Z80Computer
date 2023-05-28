@@ -44,6 +44,11 @@ public class Tokenizer
         return _cursor >= _code.Length ? EndOfFile : _code[_cursor];
     }
 
+    private char PeekFurther()
+    {
+        return _cursor + 1 >= _code.Length ? EndOfFile : _code[_cursor + 1];
+    }
+
     private void Consume()
     {
         if (Peek() is NewLine)
@@ -134,61 +139,62 @@ public class Tokenizer
         char start = Peek();
         if (start == '0')
         {
-            char next = Peek();
-            if (next == 'b')
+            char next = PeekFurther();
+            switch (next)
             {
-                Consume();
-                while (IsBinary(Peek()))
+                case 'b':
                 {
-                    if (_buffer.Add(Peek()))
-                    {
-                        Consume();
-                        continue;
-                    }
-            
-                    _errors.Add(new SyntaxError(Line, "0b" + _buffer));
+                    Consume(); Consume();
                     while (IsBinary(Peek()))
                     {
-                        Consume();
-                    }
-                    return new BadToken(Line);
-                }
-
-                if (_buffer.Count == 0)
-                {
-                    _errors.Add(new SyntaxError(Line, "0b"));
-                }
-
-                return new IntegerToken(ParseBinary(_buffer.ToString()), Line);
-            }
-            if (next == 'x')
-            {
-                Consume();
-                while (IsHex(Peek()))
-                {
-                    if (_buffer.Add(Peek()))
-                    {
-                        Consume();
-                        continue;
-                    }
+                        if (_buffer.Add(Peek()))
+                        {
+                            Consume();
+                            continue;
+                        }
             
-                    _errors.Add(new SyntaxError(Line, "0x" + _buffer));
+                        _errors.Add(new SyntaxError(Line, "0b" + _buffer));
+                        while (IsBinary(Peek()))
+                        {
+                            Consume();
+                        }
+                        return new BadToken(Line);
+                    }
+
+                    if (_buffer.Count == 0)
+                    {
+                        _errors.Add(new SyntaxError(Line, "0b"));
+                    }
+
+                    return new IntegerToken(ParseBinary(_buffer.ToString()), Line);
+                }
+                case 'x':
+                {
+                    Consume(); Consume();
                     while (IsHex(Peek()))
                     {
-                        Consume();
+                        if (_buffer.Add(Peek()))
+                        {
+                            Consume();
+                            continue;
+                        }
+            
+                        _errors.Add(new SyntaxError(Line, "0x" + _buffer));
+                        while (IsHex(Peek()))
+                        {
+                            Consume();
+                        }
+                        return new BadToken(Line);
                     }
-                    return new BadToken(Line);
-                }
 
-                if (_buffer.Count == 0)
-                {
-                    _errors.Add(new SyntaxError(Line, "0x"));
+                    if (_buffer.Count == 0)
+                    {
+                        _errors.Add(new SyntaxError(Line, "0x"));
+                    }
+                    return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber), Line);
                 }
-                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber), Line);
             }
         }
-
-        _buffer.Add(start);
         
         while (IsDigit(Peek()))
         {
