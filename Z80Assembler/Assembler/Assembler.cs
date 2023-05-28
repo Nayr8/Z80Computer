@@ -151,17 +151,17 @@ public class Assembler
         switch (instruction)
         {
             case "ld": AssembleLd(nextToken); break;
-            case "ex": break;
-            case "jr": break;
-            case "or": break;
-            case "cp": break;
-            case "jp": break;
-            case "in": break;
+            case "ex": AssembleEx(nextToken); break;
+            case "jr": AssembleJr(nextToken); break;
+            case "or": AssembleOr(nextToken); break;
+            case "cp": AssembleCp(nextToken); break;
+            case "jp": AssembleJp(nextToken); break;
+            case "in": AssembleIn(nextToken); break;
             case "di": WriteByte(0xF3); break;
             case "ei": WriteByte(0xFB); break;
-            case "rl": break;
-            case "rr": break;
-            case "im": break;
+            case "rl": AssembleRl(nextToken); break;
+            case "rr": AssembleRr(nextToken); break;
+            case "im": AssembleIm(nextToken); break;
         }
         AssertEndOfLine(Peek());
     }
@@ -365,7 +365,6 @@ public class Assembler
         return true;
     }
     
-
     private void AssembleLdAddress()
     {
         Consume();
@@ -472,6 +471,526 @@ public class Assembler
 
     #endregion
 
+    #region Assemble 'ex'
+
+    private void AssembleEx(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken { Text: "af" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "af'" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0x08); return;
+            case TextToken { Text: "de" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "hl" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xEB); return;
+            case LBracketToken:
+                Consume();
+                if (Peek() is not TextToken { Text: "sp" }) { TokenError(nextToken); return; } Consume();
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                switch (Peek())
+                {
+                    case TextToken { Text: "hl" }: WriteByte(0xE3); return;
+                    case TextToken { Text: "ix" }: WriteByte(0xDD); WriteByte(0xE3); return;
+                    case TextToken { Text: "iy" }: WriteByte(0xFD); WriteByte(0xE3); return;
+                }
+                break;
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'jr'
+
+    private void AssembleJr(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken { Text: "nz" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0x20); if (AssembleJrOffset()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "z" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0x28); if (AssembleJrOffset()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "nc" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0x30); if (AssembleJrOffset()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "c" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0x38); if (AssembleJrOffset()) return;
+                TokenError(nextToken); return;
+            default: WriteByte(0x18); if (AssembleJrOffset()) return;
+                TokenError(nextToken); return;
+        }
+    }
+
+    private bool AssembleJrOffset()
+    {
+        IToken? offsetToken = Peek();
+        if (offsetToken is TextToken textToken)
+        {
+            AddRelativeAddressLabel(textToken);
+            return true;
+        }
+        int? value = ResolveMath();
+        if (value is null) { return false;  }
+        WriteByte((byte)(value - 2));
+        return true;
+    }
+
+    #endregion
+
+    #region Assemble 'or'
+
+    private void AssembleOr(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken textToken: AssembleOrToARegister(textToken); break;
+            case LBracketToken: AssembleOrToAAddress(); break;
+        }
+        WriteByte(0xF6);
+        int? value = ResolveMath();
+        if (value is null) { TokenError(nextToken); return; }
+        WriteByte((byte)value);
+    }
+
+    private void AssembleOrToARegister(TextToken token)
+    {
+        if (token.Text is not "a") { TokenError(token); return; } Consume();
+        if (!AssertNextToken<CommaToken>()) { return; } Consume();
+        
+        IToken? nextToken = Peek();
+        switch (nextToken)
+        {
+            case TextToken { Text: "b" }: WriteByte(0xB0); return;
+            case TextToken { Text: "c" }: WriteByte(0xB1); return;
+            case TextToken { Text: "d" }: WriteByte(0xB2); return;
+            case TextToken { Text: "e" }: WriteByte(0xB3); return;
+            case TextToken { Text: "h" }: WriteByte(0xB4); return;
+            case TextToken { Text: "l" }: WriteByte(0xB5); return;
+            case TextToken { Text: "a" }: WriteByte(0xB7); return;
+            case TextToken { Text: "ixh" }: WriteByte(0xDD); WriteByte(0xB4); return;
+            case TextToken { Text: "ixl" }: WriteByte(0xFD); WriteByte(0xB5); return;
+        }
+        TokenError(nextToken);
+    }
+
+    private void AssembleOrToAAddress()
+    {
+        IToken? nextToken = Peek();
+        bool offset = false;
+        switch (nextToken)
+        {
+            case TextToken { Text: "hl" }:
+                WriteByte(0xB6);
+                if (!AssertNextToken<RBracketToken>()) { return; }
+                Consume();
+                return;
+            case TextToken { Text: "ix" }:
+                WriteByte(0xDD); offset = true; break;
+            case TextToken { Text: "iy" }:
+                WriteByte(0xFD); offset = true; break;
+        }
+        if (offset)
+        {
+            WriteByte(0xB6);
+            if (!AssertNextToken<PlusToken>()) { return; } Consume();
+            
+            int? value = ResolveMath();
+            if (value is null) { TokenError(nextToken); return;  }
+            WriteByte((byte)value);
+            return;
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'cp'
+
+    private void AssembleCp(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken textToken: AssembleCpToARegister(textToken); return;
+            case LBracketToken: AssembleCpToAAddress(nextToken); return;
+        }
+        WriteByte(0xfE);
+        int? value = ResolveMath();
+        if (value is null) { TokenError(nextToken); return; }
+        WriteByte((byte)value);
+    }
+
+    private void AssembleCpToARegister(TextToken token)
+    {
+        if (token.Text is not "a") { TokenError(token); return; }
+        Consume();
+        if (!AssertNextToken<CommaToken>()) { return; }
+        Consume();
+        
+        IToken? nextToken = Peek();
+        if (!AssertNextToken<TextToken>()) { return; }
+        Consume();
+        
+        string tokenString = ((TextToken)nextToken!).Text;
+        int? command = tokenString switch
+        {
+            "b" => 0xB8, "c" => 0xB9, "d" => 0xBA, "e" => 0xBB, "h" => 0xBC,
+            "l" => 0xBD, "a" => 0xBF, "ixh" => 0xBC, "ixl" => 0xBD,
+            _ => null
+        };
+        if (command is null) { TokenError(nextToken); return; }
+
+        switch (tokenString)
+        {
+            case [_, _, 'h']: WriteByte(0xDD); break;
+            case [_, _, 'l']: WriteByte(0xFD); break;
+        }
+        WriteByte((byte)command.Value);
+    }
+
+    private void AssembleCpToAAddress(IToken? nextToken)
+    {
+        bool offset = false;
+        switch (nextToken)
+        {
+            case TextToken { Text: "hl" }: Consume();
+                WriteByte(0xBE);
+                if (!AssertNextToken<RBracketToken>()) { return; }
+                Consume(); return;
+            case TextToken { Text: "ix" }: Consume();
+                WriteByte(0xDD); offset = true; break;
+            case TextToken { Text: "iy" }: Consume();
+                WriteByte(0xFD); offset = true; break;
+        }
+
+        if (offset)
+        {
+            WriteByte(0xBE);
+            if (!AssertNextToken<PlusToken>()) { return; }
+            Consume();
+            int? value = ResolveMath();
+            if (value is null) { TokenError(nextToken); return;  }
+            WriteByte((byte)value);
+            return;
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'jp'
+
+    private void AssembleJp(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken { Text: "nz" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xC2); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "z" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xCA); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "nc" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xD2); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "c" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xDA); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "po" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xE2); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "pe" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xEA); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "p" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xF2); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case TextToken { Text: "m" }:
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                WriteByte(0xFA); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+            case LBracketToken:
+                Consume();
+                switch (Peek())
+                {
+                    case TextToken { Text: "hl" }: WriteByte(0xE9); break;
+                    case TextToken { Text: "ix" }: WriteByte(0xDD); WriteByte(0xE9); break;
+                    case TextToken { Text: "iy" }: WriteByte(0xFD); WriteByte(0xE9); break;
+                }
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+                return;
+            default: WriteByte(0xC3); if (AssembleJpAddress()) return;
+                TokenError(nextToken); return;
+                
+        }
+    }
+
+    private bool AssembleJpAddress()
+    {
+        IToken? offsetToken = Peek();
+        if (offsetToken is TextToken textToken)
+        {
+            AddAddressLabel(textToken);
+            return true;
+        }
+        int? value = ResolveMath();
+        if (value is null) { return false;  }
+        WriteAddress((ushort)value);
+        return true;
+    }
+
+    #endregion
+
+    #region Assemble 'in'
+
+    private void AssembleIn(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken { Text: "b" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x40);
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "c" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x48);
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "d" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x50);
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "e" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x58);
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "h" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x60); 
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "l" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                WriteByte(0xED); WriteByte(0x68);
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+            case TextToken { Text: "a" }:
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (!AssertNextToken<LBracketToken>()) { return; } Consume();
+                switch (Peek())
+                {
+                    case TextToken { Text: "a" }:
+                        WriteByte(0xED); WriteByte(0x78); if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+                    case IntegerToken integerToken:
+                        WriteByte(0xDB); WriteByte((byte)integerToken.Integer); if (!AssertNextToken<RBracketToken>()) { return; } Consume(); return;
+                }
+                break;
+            case LBracketToken:
+                Consume();
+                if (Peek() is not TextToken { Text: "c" }) { TokenError(nextToken); return; } Consume();
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+                WriteByte(0xED); WriteByte(0x70); return;
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'rl'
+
+    private void AssembleRl(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken textToken: AssembleRlRegister(textToken); return;
+            case LBracketToken: AssembleRlAddress(); return;
+        }
+        TokenError(nextToken);
+    }
+
+    private void AssembleRlRegister(TextToken token)
+    {
+        Consume();
+        WriteByte(0xCB);
+        switch (token)
+        {
+            case { Text: "b" }: WriteByte(0x10); return;
+            case { Text: "c" }: WriteByte(0x11); return;
+            case { Text: "d" }: WriteByte(0x12); return;
+            case { Text: "e" }: WriteByte(0x13); return;
+            case { Text: "h" }: WriteByte(0x14); return;
+            case { Text: "l" }: WriteByte(0x15); return;
+            case { Text: "a" }: WriteByte(0x17); return;
+        }
+        TokenError(token);
+    }
+
+    private void AssembleRlAddress()
+    {
+        Consume();
+        IToken? nextToken = Peek();
+        bool offset = false;
+        switch (nextToken)
+        {
+            case TextToken { Text: "hl" }: Consume();
+                WriteByte(0xCB); WriteByte(0x16);
+                if (AssertNextToken<RBracketToken>()) { Consume(); } return;
+            case TextToken { Text: "ix" }: Consume();
+                WriteByte(0xDD); offset = true; break;
+            case TextToken { Text: "iy" }: Consume();
+                WriteByte(0xFD); offset = true; break;
+        }
+        if (offset)
+        {
+            WriteByte(0xCB);
+            if (!AssertNextToken<PlusToken>()) { return; } Consume();
+            int? value = ResolveMath();
+            if (value is null) { TokenError(nextToken); return; }
+            WriteByte((byte)value);
+            if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+            if (Peek() is CommaToken)
+            {
+                Consume();
+                switch (Peek())
+                {
+                    case TextToken { Text: "b" }: Consume(); WriteByte(0x10); return;
+                    case TextToken { Text: "c" }: Consume(); WriteByte(0x11); return;
+                    case TextToken { Text: "d" }: Consume(); WriteByte(0x12); return;
+                    case TextToken { Text: "e" }: Consume(); WriteByte(0x13); return;
+                    case TextToken { Text: "h" }: Consume(); WriteByte(0x14); return;
+                    case TextToken { Text: "l" }: Consume(); WriteByte(0x15); return;
+                    case TextToken { Text: "a" }: Consume(); WriteByte(0x17); return;
+                }
+            }
+            else { WriteByte(0x16); return; }
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'rr'
+
+    private void AssembleRr(IToken? nextToken)
+    {
+        switch (nextToken)
+        {
+            case TextToken textToken: AssembleRrRegister(textToken); return;
+            case LBracketToken: AssembleRrAddress(); return;
+        }
+        TokenError(nextToken);
+    }
+
+    private void AssembleRrRegister(TextToken token)
+    {
+        Consume();
+        WriteByte(0xCB);
+        switch (token)
+        {
+            case { Text: "b" }: WriteByte(0x18); return;
+            case { Text: "c" }: WriteByte(0x19); return;
+            case { Text: "d" }: WriteByte(0x1A); return;
+            case { Text: "e" }: WriteByte(0x1B); return;
+            case { Text: "h" }: WriteByte(0x1C); return;
+            case { Text: "l" }: WriteByte(0x1D); return;
+            case { Text: "a" }: WriteByte(0x1F); return;
+        }
+        TokenError(token);
+    }
+
+    private void AssembleRrAddress()
+    {
+        Consume();
+        IToken? nextToken = Peek();
+        bool offset = false;
+        switch (nextToken)
+        {
+            case TextToken { Text: "hl" }: Consume();
+                WriteByte(0xCB); WriteByte(0x1E);
+                if (AssertNextToken<RBracketToken>()) { Consume(); } return;
+            case TextToken { Text: "ix" }: Consume();
+                WriteByte(0xDD); offset = true; break;
+            case TextToken { Text: "iy" }: Consume();
+                WriteByte(0xFD); offset = true; break;
+        }
+        if (offset)
+        {
+            WriteByte(0xCB);
+            if (!AssertNextToken<PlusToken>()) { return; } Consume();
+            int? value = ResolveMath();
+            if (value is null) { TokenError(nextToken); return; }
+            WriteByte((byte)value);
+            if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+            if (Peek() is CommaToken)
+            {
+                Consume();
+                switch (Peek())
+                {
+                    case TextToken { Text: "b" }: Consume(); WriteByte(0x18); return;
+                    case TextToken { Text: "c" }: Consume(); WriteByte(0x19); return;
+                    case TextToken { Text: "d" }: Consume(); WriteByte(0x1A); return;
+                    case TextToken { Text: "e" }: Consume(); WriteByte(0x1B); return;
+                    case TextToken { Text: "h" }: Consume(); WriteByte(0x1C); return;
+                    case TextToken { Text: "l" }: Consume(); WriteByte(0x1D); return;
+                    case TextToken { Text: "a" }: Consume(); WriteByte(0x1F); return;
+                }
+            }
+            else { WriteByte(0x1E); return; }
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
+    #region Assemble 'im'
+
+    private void AssembleIm(IToken? nextToken)
+    {
+        WriteByte(0xED);
+        switch (nextToken)
+        {
+            case IntegerToken { Integer: 0 }: WriteByte(0x46); return;
+            case IntegerToken { Integer: 1 }: WriteByte(0x56); return;
+            case IntegerToken { Integer: 2 }: WriteByte(0x5E); return;
+        }
+        TokenError(nextToken);
+    }
+
+    #endregion
+
     private void Assemble3CharInstruction(string instruction)
     {
         
@@ -570,34 +1089,24 @@ public class Assembler
                 return;
             case TextToken { Text: "ix" }:
                 WriteByte(0xDD);
-                AssembleIncOffsetAddress(); return;
+                AssembleIncOffsetAddress(nextToken); return;
             case TextToken { Text: "iy" }:
                 WriteByte(0xFD);
-                AssembleIncOffsetAddress(); return;
+                AssembleIncOffsetAddress(nextToken); return;
         }
         TokenError(nextToken);
     }
 
-    private void AssembleIncOffsetAddress()
+    private void AssembleIncOffsetAddress(IToken? nextToken)
     {
         Consume();
         WriteByte(0x34);
 
         if (!AssertNextToken<PlusToken>()) { return; } Consume();
         
-        IToken? offsetToken = Peek();
-        switch (offsetToken)
-        {
-            case IntegerToken integerToken: WriteByte((byte)integerToken.Integer); break;
-            case VariableToken variableToken:
-                if (_variables.TryGetValue(variableToken.Label, out int variableOffset))
-                {
-                    WriteByte((byte)variableOffset);
-                    break;
-                }
-                goto default;
-            default: TokenError(offsetToken); return;
-        }
+        int? value = ResolveMath();
+        if (value is null) { TokenError(nextToken); return; }
+        WriteByte((byte)value);
 
         if (!AssertNextToken<RBracketToken>()) { return; } Consume();
     }
@@ -652,33 +1161,23 @@ public class Assembler
                 if (!AssertNextToken<RBracketToken>()) { return; } Consume();
                 WriteByte(0x35); return;
             case TextToken { Text: "ix" }: WriteByte(0xDD);
-                AssembleDecOffsetAddress(); return;
+                AssembleDecOffsetAddress(nextToken); return;
             case TextToken { Text: "iy" }: WriteByte(0xFD);
-                AssembleDecOffsetAddress(); return;
+                AssembleDecOffsetAddress(nextToken); return;
         }
         TokenError(nextToken);
     }
 
-    private void AssembleDecOffsetAddress()
+    private void AssembleDecOffsetAddress(IToken? nextToken)
     {
         Consume();
         WriteByte(0x35);
 
         if (!AssertNextToken<PlusToken>()) { return; } Consume();
         
-        IToken? offsetToken = Peek();
-        switch (offsetToken)
-        {
-            case IntegerToken integerToken: WriteByte((byte)integerToken.Integer); break;
-            case VariableToken variableToken:
-                if (_variables.TryGetValue(variableToken.Label, out int variableOffset))
-                {
-                    WriteByte((byte)variableOffset);
-                    break;
-                }
-                goto default;
-            default: TokenError(offsetToken); return;
-        }
+        int? value = ResolveMath();
+        if (value is null) { TokenError(nextToken); return; }
+        WriteByte((byte)value);
 
         if (!AssertNextToken<RBracketToken>()) { return; } Consume();
     }

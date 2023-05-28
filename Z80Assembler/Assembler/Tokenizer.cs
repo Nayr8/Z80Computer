@@ -31,7 +31,7 @@ public class Tokenizer
         {
             IToken? token = NextToken();
             _buffer.Clear();
-            if (token is not NewLineToken and not null || _tokens.Count is 0 || _tokens.Last() is NewLineToken)
+            if (token is not null && (token is not NewLineToken || _tokens.Count is 0 || _tokens.Last() is NewLineToken))
             {
                 _tokens.Add(token);
             }
@@ -238,7 +238,7 @@ public class Tokenizer
     }
     private static bool IsAlphanumeric(char value)
     {
-        return value is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '.' or '_';
+        return value is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '.' or '_' or '\'';
     }
 
     private static bool IsDigit(char value)
