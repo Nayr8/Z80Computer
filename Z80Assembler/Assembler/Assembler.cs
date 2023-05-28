@@ -105,9 +105,9 @@ public class Assembler
             case TextToken token:
                 AssembleInstruction(token);
                 break;
+            case NewLineToken or null: break;
             case { } token:
-                ConsumeTokenLine();
-                _errors.Add(new SyntaxError(token));
+                TokenError(token);
                 break;
         }
     }
@@ -140,8 +140,7 @@ public class Assembler
             case 4: Assemble4CharInstruction(token.Text);
                 break;
             default:
-                ConsumeTokenLine();
-                _errors.Add(new SyntaxError(token));
+                TokenError(token);
                 break;
         }
     }
@@ -369,7 +368,55 @@ public class Assembler
 
     private void AssembleLdAddress()
     {
-        throw new NotImplementedException(); // TODO
+        Consume();
+        IToken? nextToken = Peek();
+        bool offset = false;
+        switch (nextToken)
+        {
+            case TextToken { Text: "bc" }: 
+                Consume();
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (Peek() is TextToken { Text: "a" })
+                {
+                    WriteByte(0x02); return;
+                }
+                break;
+            case TextToken { Text: "de" }: 
+                Consume();
+                if (!AssertNextToken<RBracketToken>()) { return; } Consume();
+                if (!AssertNextToken<CommaToken>()) { return; } Consume();
+                if (Peek() is TextToken { Text: "a" })
+                {
+                    WriteByte(0x12); return;
+                }
+                break;
+            case TextToken { Text: "hl" }: AssembleLdAddressHL(); return;
+            case TextToken { Text: "ix" }:
+                WriteByte(0xDD); offset = true; break;
+            case TextToken { Text: "iy" }:
+                WriteByte(0xFD); offset = true; break;
+            default:
+                AssembleLdAddressImmediate(nextToken); return;
+
+        }
+
+        if (offset)
+        {
+            // TODO
+        }
+        
+        TokenError(nextToken);
+    }
+
+    private void AssembleLdAddressHL()
+    {
+        
+    }
+
+    private void AssembleLdAddressImmediate(IToken? token)
+    {
+        
     }
 
     #endregion

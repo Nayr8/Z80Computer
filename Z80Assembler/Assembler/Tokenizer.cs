@@ -29,9 +29,9 @@ public class Tokenizer
     {
         while (Peek() is not EndOfFile)
         {
-            IToken token = NextToken();
+            IToken? token = NextToken();
             _buffer.Clear();
-            if (token is not NewLineToken || _tokens.Count is 0 || _tokens.Last() is NewLineToken)
+            if (token is not NewLineToken and not null || _tokens.Count is 0 || _tokens.Last() is NewLineToken)
             {
                 _tokens.Add(token);
             }
@@ -55,7 +55,7 @@ public class Tokenizer
         ++Column;
     }
 
-    private IToken NextToken()
+    private IToken? NextToken()
     {
         char next = Peek();
         while (next is Space)
@@ -94,14 +94,14 @@ public class Tokenizer
         return new BadToken(Line, Column);
     }
     
-    private IToken ConsumeComment()
+    private IToken? ConsumeComment()
     {
         do
         {
             Consume();
         } while (Peek() is not NewLine and not EndOfFile);
 
-        return NextToken();
+        return null;
     }
     
     private IToken ReadConstToken()
