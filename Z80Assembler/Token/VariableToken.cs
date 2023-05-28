@@ -4,7 +4,7 @@ public class VariableToken : IToken
 {
     public string Label { get; }
 
-    public VariableToken(string label, int line, int column) : base(line, column)
+    public VariableToken(string label, int line) : base(line)
     {
         Label = label;
     }

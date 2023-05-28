@@ -125,7 +125,13 @@ public class Assembler
 
     private int? ResolveMath()
     {
-        throw new NotImplementedException();
+        // TODO add actual maths
+        return Peek() switch
+        {
+            VariableToken variableToken => (_variables.TryGetValue(variableToken.Label, out int value) ? value : null),
+            IntegerToken integerToken => integerToken.Integer,
+            _ => null
+        };
     }
 
     private void AssembleInstruction(TextToken token)
@@ -2542,7 +2548,7 @@ public class Assembler
 
     private void TokenError(IToken? token)
     {
-        _errors.Add(new SyntaxError(token ?? new BadToken(_tokenizer.Line, _tokenizer.Column)));
+        _errors.Add(new SyntaxError(token ?? new BadToken(_tokenizer.Line)));
         ConsumeTokenLine();
     }
 

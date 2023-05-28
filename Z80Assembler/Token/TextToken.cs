@@ -4,7 +4,7 @@ public class TextToken : IToken
 {
     public string Text { get; }
 
-    public TextToken(string text, int line, int column) : base(line, column)
+    public TextToken(string text, int line) : base(line)
     {
         Text = text;
     }

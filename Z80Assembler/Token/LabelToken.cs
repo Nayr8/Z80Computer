@@ -4,7 +4,7 @@ public class LabelToken : IToken
 {
     public string Label { get; }
 
-    public LabelToken(string label, int line, int column) : base(line, column)
+    public LabelToken(string label, int line) : base(line)
     {
         Label = label;
     }

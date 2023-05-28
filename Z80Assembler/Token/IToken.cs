@@ -3,11 +3,9 @@ namespace Z80Assembler.Token;
 public abstract class IToken
 {
     public int Line { get; }
-    public int Column { get; }
 
-    protected IToken(int line, int column)
+    protected IToken(int line)
     {
         Line = line;
-        Column = column;
     }
 }

@@ -13,7 +13,6 @@ public class Tokenizer
     private readonly string _code;
     private int _cursor;
     public int Line;
-    public int Column;
 
     private readonly List<IToken> _tokens = new();
     private readonly StringBuffer _buffer = new(16);
@@ -49,10 +48,9 @@ public class Tokenizer
     {
         if (Peek() is NewLine)
         {
-            ++Line; Column = -1;
+            ++Line;
         }
         ++_cursor;
-        ++Column;
     }
 
     private IToken? NextToken()
@@ -66,15 +64,15 @@ public class Tokenizer
 
         return next switch
         {
-            ',' => ConsumeAndReturn(new CommaToken(Line, Column)),
-            '(' => ConsumeAndReturn(new LBracketToken(Line, Column)),
-            ')' => ConsumeAndReturn(new RBracketToken(Line, Column)),
-            '+' => ConsumeAndReturn(new PlusToken(Line, Column)),
-            '-' => ConsumeAndReturn(new MinusToken(Line, Column)),
-            '\n' => ConsumeAndReturn(new NewLineToken(Line, Column)),
+            ',' => ConsumeAndReturn(new CommaToken(Line)),
+            '(' => ConsumeAndReturn(new LBracketToken(Line)),
+            ')' => ConsumeAndReturn(new RBracketToken(Line)),
+            '+' => ConsumeAndReturn(new PlusToken(Line)),
+            '-' => ConsumeAndReturn(new MinusToken(Line)),
+            '\n' => ConsumeAndReturn(new NewLineToken(Line)),
             ';' => ConsumeComment(),
             '@' => ReadConstToken(),
-            '\0' => new NewLineToken(Line, Column),
+            '\0' => new NewLineToken(Line),
             >= '0' and <= '9' => ReadIntegerToken(),
             >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(),
             _ => InvalidInitialCharToken(next)
@@ -90,8 +88,8 @@ public class Tokenizer
     private IToken InvalidInitialCharToken(char next)
     {
         Consume();
-        _errors.Add(new SyntaxError(Line, Column, next.ToString()));
-        return new BadToken(Line, Column);
+        _errors.Add(new SyntaxError(Line, next.ToString()));
+        return new BadToken(Line);
     }
     
     private IToken? ConsumeComment()
@@ -115,20 +113,20 @@ public class Tokenizer
                 continue;
             }
             
-            _errors.Add(new SyntaxError(Line, Column));
+            _errors.Add(new SyntaxError(Line));
             while (IsAlphanumeric(Peek()))
             {
                 Consume();
             }
-            return new BadToken(Line, Column);
+            return new BadToken(Line);
         }
 
         if (_buffer.Count == 0)
         {
-            _errors.Add(new SyntaxError(Line, Column, "@"));
+            _errors.Add(new SyntaxError(Line, "@"));
         }
 
-        return new VariableToken(_buffer.ToString(), Line, Column);
+        return new VariableToken(_buffer.ToString(), Line);
     }
 
     private IToken ReadIntegerToken()
@@ -148,20 +146,20 @@ public class Tokenizer
                         continue;
                     }
             
-                    _errors.Add(new SyntaxError(Line, Column, "0b" + _buffer));
+                    _errors.Add(new SyntaxError(Line, "0b" + _buffer));
                     while (IsBinary(Peek()))
                     {
                         Consume();
                     }
-                    return new BadToken(Line, Column);
+                    return new BadToken(Line);
                 }
 
                 if (_buffer.Count == 0)
                 {
-                    _errors.Add(new SyntaxError(Line, Column, "0b"));
+                    _errors.Add(new SyntaxError(Line, "0b"));
                 }
 
-                return new IntegerToken(ParseBinary(_buffer.ToString()), Line, Column);
+                return new IntegerToken(ParseBinary(_buffer.ToString()), Line);
             }
             if (next == 'x')
             {
@@ -174,19 +172,19 @@ public class Tokenizer
                         continue;
                     }
             
-                    _errors.Add(new SyntaxError(Line, Column, "0x" + _buffer));
+                    _errors.Add(new SyntaxError(Line, "0x" + _buffer));
                     while (IsHex(Peek()))
                     {
                         Consume();
                     }
-                    return new BadToken(Line, Column);
+                    return new BadToken(Line);
                 }
 
                 if (_buffer.Count == 0)
                 {
-                    _errors.Add(new SyntaxError(Line, Column, "0x"));
+                    _errors.Add(new SyntaxError(Line, "0x"));
                 }
-                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber), Line, Column);
+                return new IntegerToken(int.Parse(_buffer.ToString(), NumberStyles.HexNumber), Line);
             }
         }
 
@@ -200,15 +198,15 @@ public class Tokenizer
                 continue;
             }
             
-            _errors.Add(new SyntaxError(Line, Column));
+            _errors.Add(new SyntaxError(Line));
             while (IsDigit(Peek()))
             {
                 Consume();
             }
-            return new BadToken(Line, Column);
+            return new BadToken(Line);
         }
 
-        return new IntegerToken(int.Parse(_buffer.ToString()), Line, Column);
+        return new IntegerToken(int.Parse(_buffer.ToString()), Line);
     }
 
     private IToken ReadTextOrLabel()
@@ -223,17 +221,17 @@ public class Tokenizer
                 continue;
             }
             
-            _errors.Add(new SyntaxError(Line, Column));
+            _errors.Add(new SyntaxError(Line));
             while (IsAlphanumeric(Peek()))
             {
                 Consume();
             }
-            return new BadToken(Line, Column);
+            return new BadToken(Line);
         }
 
-        if (Peek() != ':') return new TextToken(_buffer.ToString(), Line, Column);
+        if (Peek() != ':') return new TextToken(_buffer.ToString(), Line);
         Consume();
-        return new LabelToken(_buffer.ToString(), Line, Column);
+        return new LabelToken(_buffer.ToString(), Line);
 
     }
     private static bool IsAlphanumeric(char value)

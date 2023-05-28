@@ -4,7 +4,7 @@ public class IntegerToken : IToken
 {
     public int Integer { get; }
 
-    public IntegerToken(int integer, int line, int column) : base(line, column)
+    public IntegerToken(int integer, int line) : base(line)
     {
         Integer = integer;
     }
