@@ -1,7 +1,7 @@
 ﻿
 
-using Z80CPUEmulator;
+using Z80Computer;
 
-Console.WriteLine(0x2000 * 0x100);
-Console.WriteLine(0x200000);
-
+byte[] code = File.ReadAllBytes("../../../../Z80Assembler/AssembledZ80.bin");
+Computer computer = new Computer(code);
+computer.Run();

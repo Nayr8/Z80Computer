@@ -12,7 +12,7 @@ public class Tokenizer
     
     private readonly string _code;
     private int _cursor;
-    public int Line;
+    public int Line = 1;
 
     private readonly List<IToken> _tokens = new();
     private readonly StringBuffer _buffer = new(64);

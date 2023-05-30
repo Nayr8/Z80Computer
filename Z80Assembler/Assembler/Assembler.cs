@@ -33,8 +33,20 @@ public class Assembler
     public byte[] Assemble()
     {
         _tokens = _tokenizer.Tokenize();
+        if (_errors.Count > 0)
+        {
+            return new byte[]{1};
+        }
         AssembleToBinary();
+        if (_errors.Count > 0)
+        {
+            return new byte[]{2};
+        }
         InsertLabels();
+        if (_errors.Count > 0)
+        {
+            return new byte[]{3};
+        }
         return _assembledCode.ToArray();
     }
 
@@ -55,17 +67,17 @@ public class Assembler
 
     private void AddLabelSource(string label)
     {
-        _labelSources.Add(label, _assembledCode.Count - 1);
+        _labelSources.Add(label, _assembledCode.Count);
     }
     
     private void AddLabelPointerRelative(string label)
     {
-        _labelPointerRelative.Add(new LabelLocation(label, _assembledCode.Count - 1));
+        _labelPointerRelative.Add(new LabelLocation(label, _assembledCode.Count - 2));
     }
     
     private void AddLabelPointerAbsolute(string label)
     {
-        _labelPointerAbsolute.Add(new LabelLocation(label, _assembledCode.Count - 1));
+        _labelPointerAbsolute.Add(new LabelLocation(label, _assembledCode.Count - 2));
     }
 
     private IToken? Peek()
@@ -828,6 +840,7 @@ public class Assembler
         IToken? offsetToken = Peek();
         if (offsetToken is TextToken textToken)
         {
+            Consume();
             AddAddressLabel(textToken);
             return true;
         }
@@ -2637,14 +2650,14 @@ public class Assembler
     private void AddRelativeAddressLabel(TextToken addressToken)
     {
         Consume();
-        AddLabelPointerRelative(addressToken.Text);
         WriteByte(0);
+        AddLabelPointerRelative(addressToken.Text);
     }
 
     private void AddAddressLabel(TextToken addressToken)
     {
-        AddLabelPointerAbsolute(addressToken.Text);
         WriteAddress(0);
+        AddLabelPointerAbsolute(addressToken.Text);
     }
 
     #endregion
@@ -2658,6 +2671,7 @@ public class Assembler
                 int address = value + _codeStartAddress;
                 _assembledCode[labelLocation.CodePosition] = (byte)address;
                 _assembledCode[labelLocation.CodePosition + 1] = (byte)(address >> 8);
+                continue;
             }
             _errors.Add(new SyntaxError(-1));
         }
@@ -2666,6 +2680,7 @@ public class Assembler
             if (_labelSources.TryGetValue(labelLocation.Label, out int value))
             {
                 _assembledCode[labelLocation.CodePosition] += (byte)value;
+                continue;
             }
             _errors.Add(new SyntaxError(-1));
         }

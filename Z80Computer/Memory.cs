@@ -28,5 +28,13 @@ namespace Z80Computer
 
             _memory[address + offset] = value;
         }
+
+        public void WriteBytes(int address, byte[] values)
+        {
+            for (int i = 0; i < values.Length; ++i)
+            {
+                WriteByte(address + i, values[i]);
+            }
+        }
     }
 }

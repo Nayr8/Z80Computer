@@ -282,7 +282,7 @@ namespace Z80CPUEmulator
                 case Opcode.ReturnIfNotCarry: Return(!Registers.Flags.Carry); break;
                 case Opcode.PopDE: Registers.DE = PopWord(); break;
                 case Opcode.JumpIfNotCarryAbsolute: JumpAbsoluteIf(!Registers.Flags.Carry, ReadNextWord()); break;
-                case Opcode.OutputAToPort: Ports.Write(Registers.A, ReadNextByte()); break;
+                case Opcode.OutputAToPort: Ports.Write(ReadNextByte(), Registers.A); break;
                 case Opcode.CallIfNotCarryAbsolute: Call(!Registers.Flags.Carry, ReadNextWord()); break;
                 case Opcode.PushDE: Push(Registers.DE); break;
                 case Opcode.SubImmediateFromA: Registers.A = Sub(Registers.A, ReadNextByte()); break;
@@ -829,7 +829,7 @@ namespace Z80CPUEmulator
 
                 // 0x50
                 case MiscOpcode.InputFromPortCToD: Registers.D = Ports.Read(Registers.C); break;
-                case MiscOpcode.OutputDToPortC: Ports.Write(Registers.C, Registers.B); break;
+                case MiscOpcode.OutputDToPortC: Ports.Write(Registers.C, Registers.D); break;
                 case MiscOpcode.SubCarryDEFromHL: Registers.HL = SubWithCarry(Registers.HL, Registers.DE); break;
                 case MiscOpcode.StoreDEInImmediateAddress: WriteWord(ReadNextWord(), Registers.DE); break;
                 case MiscOpcode.SetInterruptMode1: _interruptHandler.InterruptMode = InterruptMode.One; break;
