@@ -10,7 +10,7 @@ namespace Z80Computer
         public Computer(byte[] code)
         {
             Memory memory = new Memory();
-            memory.WriteBytes(0, code);
+            memory.WriteToRom(0, code);
             PortHandler portHandler = new PortHandler(memory);
             _cpu = new Z80(memory, portHandler);
         }

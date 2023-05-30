@@ -1,13 +1,13 @@
+@port.write 0x10
+
 jp start
-db "Hello, World!", 0
+msg: db "Hello, World!", 0
 start:
-    ld hl, 0x0003
+    ld hl, msg
 .loop:
     ld a, (hl)
-    cp b
-    jp z, end
-    out (0x10), a
+    out (@port.write), a
     inc hl
-    jp .loop
-end:
+    cp b
+    jp nz, .loop
     halt

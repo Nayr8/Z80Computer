@@ -12,14 +12,13 @@ namespace Z80Computer
         private Memory _memory;
 
         public const byte
-            MemoryPage0 = 0x01, // 0x0000 - 0x1FFF
-            MemoryPage1 = 0x02, // 0x2000 - 0x3FFF
-            MemoryPage2 = 0x03, // 0x4000 - 0x5FFF
-            MemoryPage3 = 0x04, // 0x6000 - 0x7FFF
-            MemoryPage4 = 0x05, // 0x8000 - 0x9FFF
-            MemoryPage5 = 0x06, // 0xA000 - 0xBFFF
-            MemoryPage6 = 0x07, // 0xC000 - 0xDFFF
-            MemoryPage7 = 0x08, // 0xE000 - 0xFFFF
+            MemoryPage1 = 0x01, // 0x2000 - 0x3FFF
+            MemoryPage2 = 0x02, // 0x4000 - 0x5FFF
+            MemoryPage3 = 0x03, // 0x6000 - 0x7FFF
+            MemoryPage4 = 0x04, // 0x8000 - 0x9FFF
+            MemoryPage5 = 0x05, // 0xA000 - 0xBFFF
+            MemoryPage6 = 0x06, // 0xC000 - 0xDFFF
+            MemoryPage7 = 0x07, // 0xE000 - 0xFFFF
 
             WriteByte = 0x10;
 
@@ -32,7 +31,7 @@ namespace Z80Computer
         {
             return port switch
             {
-                (>=MemoryPage0) and (<=MemoryPage7) => _memory.PageTable[port - MemoryPage0],
+                (>=MemoryPage1) and (<=MemoryPage7) => _memory.PageTable[port - MemoryPage1],
                 WriteByte => 0,
                 _ => 0,
             };
@@ -41,7 +40,7 @@ namespace Z80Computer
         public void Write(byte port, byte value)
         {
             switch (port) {
-                case (>= MemoryPage0) and (<= MemoryPage7): _memory.PageTable[port - MemoryPage0] = value; break;
+                case (>= MemoryPage1) and (<= MemoryPage7): _memory.PageTable[port - MemoryPage1] = value; break;
                 case WriteByte: Console.Write((char)value); break;
             }
         }

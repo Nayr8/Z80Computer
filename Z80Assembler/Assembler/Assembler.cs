@@ -161,7 +161,6 @@ public class Assembler
                     result = -token.Integer; break;
                 }
                 result = null; break;
-            
             default: result = null; break;
         }
         if (result is not null)
@@ -309,7 +308,9 @@ public class Assembler
             {
                 case TextToken { Text: "bc" }: Consume(); WriteByte(0x0A);
                     if (Peek() is not RBracketToken) { return false; } Consume(); return true;
-                case TextToken { Text: "de" }: Consume(); WriteByte(0x0A);
+                case TextToken { Text: "de" }: Consume(); WriteByte(0x1A);
+                    if (Peek() is not RBracketToken) { return false; } Consume(); return true;
+                case TextToken { Text: "hl" }: Consume(); WriteByte(0x7E);
                     if (Peek() is not RBracketToken) { return false; } Consume(); return true;
             }
             int? address = ResolveMath();
@@ -443,9 +444,17 @@ public class Assembler
 
     private bool AssembleLd2ByteRegisterFromAddress(byte instruction)
     {
+        if (Peek() is TextToken textToken)
+        {
+            Consume();
+            WriteByte(0x3A);
+            AddAddressLabel(textToken);
+            if (Peek() is not RBracketToken) { return false; } Consume();
+            WriteByte(0xED); WriteByte(instruction);
+            return true;
+        }
         int? address = ResolveMath();
-        if (address is null || !AssertNextToken<RBracketToken>()) { return false; }
-        Consume();
+        if (address is null || !AssertNextToken<RBracketToken>()) { return false; } Consume();
         WriteByte(0xED); WriteByte(instruction);
         WriteAddress((ushort)address);
         return true;
@@ -453,6 +462,13 @@ public class Assembler
 
     private bool AssembleLd2ByteRegisterFromImmediate(byte instruction)
     {
+        if (Peek() is TextToken textToken)
+        {
+            Consume();
+            WriteByte(instruction);
+            AddAddressLabel(textToken);
+            return true;
+        }
         int? value = ResolveMath();
         if (value is null) { return false; }
         WriteByte(instruction);
@@ -1853,6 +1869,22 @@ public class Assembler
                 Consume();
                 WriteByte(0xD3);
                 WriteByte((byte)integerToken.Integer);
+                if (!AssertNextToken<RBracketToken>()) { return; }
+                Consume();
+                if (!AssertNextToken<CommaToken>()) { return; }
+                Consume();
+
+                if (Peek() is not TextToken { Text: "a" }) { TokenError(nextToken); return; }
+                Consume();
+                return;
+            case VariableToken variableToken:
+                Consume();
+                WriteByte(0xD3);
+                if (!_variables.TryGetValue(variableToken.Label, out int value))
+                {
+                    TokenError(nextToken); return;
+                }
+                WriteByte((byte)value);
                 if (!AssertNextToken<RBracketToken>()) { return; }
                 Consume();
                 if (!AssertNextToken<CommaToken>()) { return; }
