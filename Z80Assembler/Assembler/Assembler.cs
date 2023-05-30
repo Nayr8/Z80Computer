@@ -7,6 +7,8 @@ public class Assembler
 {
     private readonly List<SyntaxError> _errors = new();
 
+    private ushort _codeStartAddress;
+
     private readonly Tokenizer _tokenizer;
     private List<IToken> _tokens = new();
 
@@ -18,13 +20,14 @@ public class Assembler
     private readonly List<LabelLocation> _labelPointerRelative = new(); // Target is single byte
     private readonly List<LabelLocation> _labelPointerAbsolute = new(); // Target is two bytes
 
-    public Assembler(string code)
+    public Assembler(string code, ushort codeStartAddress)
     {
         // Normalise line endings
         code = code.Replace("\r\n", "\n");
         code = code.Replace("\r", "\n");
 
         _tokenizer = new Tokenizer(code, _errors);
+        _codeStartAddress = codeStartAddress;
     }
 
     public byte[] Assemble()
@@ -2617,8 +2620,9 @@ public class Assembler
         {
             if (_labelSources.TryGetValue(labelLocation.Label, out int value))
             {
-                _assembledCode[labelLocation.CodePosition] = (byte)value;
-                _assembledCode[labelLocation.CodePosition + 1] = (byte)(value >> 8);
+                int address = value + _codeStartAddress;
+                _assembledCode[labelLocation.CodePosition] = (byte)address;
+                _assembledCode[labelLocation.CodePosition + 1] = (byte)(address >> 8);
             }
             _errors.Add(new SyntaxError(-1));
         }

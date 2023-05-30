@@ -30,7 +30,8 @@ public class Tokenizer
         {
             IToken? token = NextToken();
             _buffer.Clear();
-            if (token is not null && (token is not NewLineToken || _tokens.Count is 0 || _tokens.Last() is NewLineToken))
+            // newline 
+            if (token is not null && (token is not NewLineToken || (token is NewLineToken && (_tokens.Count is 0 || _tokens.Last() is not NewLineToken))))
             {
                 _tokens.Add(token);
             }

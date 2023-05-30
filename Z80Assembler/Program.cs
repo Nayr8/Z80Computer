@@ -11,41 +11,20 @@ start: ; The start label
 
 ; end comment";
 */
+string code = File.ReadAllText("../../../AssembleMe.z80");
+Console.WriteLine(code);
 
+Assembler assembler = new Assembler(code, 0x0000);
+byte[] assembledCode = assembler.Assemble();
 
-while (true)
+if (assembler.Errors())
 {
-    Console.Write("Enter line: ");
-    string code = Console.ReadLine() ?? "";
-    if (code is "exit") break;
-    
-    Assembler assembler = new(code);
-    assembler.AddVariable("test", 0x56);
-    assembler.AddVariable("boob", 0xB00B);
-    byte[] binary = assembler.Assemble();
-    
-    Console.Write("Tokens: ");
-    assembler.DumpTokens(); Console.WriteLine();
-
-    if (assembler.Errors())
-    {
-        Console.Write("Errors: ");
-        assembler.DumpErrors(); Console.WriteLine();
-    }
-    
-    Console.Write("Code: ");
-    BinaryLogger(binary); Console.WriteLine();
+    assembler.DumpErrors();
+    return;
 }
 
-void BinaryLogger(byte[] binary)
-{
-    Console.WriteLine(binary.Length switch
-    {
-        0 => "No Code",
-        1 => $"[0x{binary[0]:X2}]",
-        2 => $"[0x{binary[0]:X2}, 0x{binary[1]:X2}]",
-        3 => $"[0x{binary[0]:X2}, 0x{binary[1]:X2}, 0x{binary[2]:X2}]",
-        4 => $"[0x{binary[0]:X2}, 0x{binary[1]:X2}, 0x{binary[2]:X2}, 0x{binary[3]:X2}]",
-        _ => "Err"
-    });
-}
+string byteOrBytes = assembledCode.Length > 0 ? "bytes" : "byte";
+Console.WriteLine($"Writing {assembledCode.Length} {byteOrBytes} to AssembledZ80.bin");
+FileStream output = File.Open("../../../AssembledZ80.bin", FileMode.OpenOrCreate);
+output.Write(assembledCode);
+output.Flush();
