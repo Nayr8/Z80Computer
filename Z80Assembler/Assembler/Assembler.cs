@@ -13,7 +13,7 @@ public class Assembler
     private int _cursor;
 
     private readonly List<byte> _assembledCode = new();
-    private readonly List<LabelLocation> _labelSources = new();
+    private readonly Dictionary<string, int> _labelSources= new();
     private readonly Dictionary<string, int> _variables = new();
     private readonly List<LabelLocation> _labelPointerRelative = new(); // Target is single byte
     private readonly List<LabelLocation> _labelPointerAbsolute = new(); // Target is two bytes
@@ -52,7 +52,7 @@ public class Assembler
 
     private void AddLabelSource(string label)
     {
-        _labelSources.Add(new LabelLocation(label, _assembledCode.Count - 1));
+        _labelSources.Add(label, _assembledCode.Count - 1);
     }
     
     private void AddLabelPointerRelative(string label)
@@ -2611,9 +2611,25 @@ public class Assembler
 
     #endregion
 
-    public void InsertLabels()
+    private void InsertLabels()
     {
-        
+        foreach (LabelLocation labelLocation in  _labelPointerAbsolute)
+        {
+            if (_variables.TryGetValue(labelLocation.Label, out int value))
+            {
+                _assembledCode[labelLocation.CodePosition] = (byte)value;
+                _assembledCode[labelLocation.CodePosition + 1] = (byte)(value >> 8);
+            }
+            _errors.Add(new SyntaxError(-1));
+        }
+        foreach (LabelLocation labelLocation in  _labelPointerRelative)
+        {
+            if (_variables.TryGetValue(labelLocation.Label, out int value))
+            {
+                _assembledCode[labelLocation.CodePosition] += (byte)value;
+            }
+            _errors.Add(new SyntaxError(-1));
+        }
     }
 
     public bool Errors()
