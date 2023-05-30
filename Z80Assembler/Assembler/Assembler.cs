@@ -2615,7 +2615,7 @@ public class Assembler
     {
         foreach (LabelLocation labelLocation in  _labelPointerAbsolute)
         {
-            if (_variables.TryGetValue(labelLocation.Label, out int value))
+            if (_labelSources.TryGetValue(labelLocation.Label, out int value))
             {
                 _assembledCode[labelLocation.CodePosition] = (byte)value;
                 _assembledCode[labelLocation.CodePosition + 1] = (byte)(value >> 8);
@@ -2624,7 +2624,7 @@ public class Assembler
         }
         foreach (LabelLocation labelLocation in  _labelPointerRelative)
         {
-            if (_variables.TryGetValue(labelLocation.Label, out int value))
+            if (_labelSources.TryGetValue(labelLocation.Label, out int value))
             {
                 _assembledCode[labelLocation.CodePosition] += (byte)value;
             }
