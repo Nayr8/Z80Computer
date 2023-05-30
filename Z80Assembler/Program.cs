@@ -25,6 +25,7 @@ if (assembler.Errors())
 
 string byteOrBytes = assembledCode.Length > 0 ? "bytes" : "byte";
 Console.WriteLine($"Writing {assembledCode.Length} {byteOrBytes} to AssembledZ80.bin");
+File.Delete("../../../AssembledZ80.bin");
 FileStream output = File.Open("../../../AssembledZ80.bin", FileMode.OpenOrCreate);
 output.Write(assembledCode);
 output.Flush();

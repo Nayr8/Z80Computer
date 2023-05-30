@@ -126,6 +126,14 @@ public class Assembler
         WriteByte((byte)(address >> 8));
     }
 
+    private void WriteString(string value)
+    {
+        foreach (byte b in value)
+        {
+            _assembledCode.Add(b);
+        }
+    }
+
     private int? ResolveMath()
     {
         // TODO add actual maths
@@ -184,8 +192,35 @@ public class Assembler
             case "rl": AssembleRl(nextToken); break;
             case "rr": AssembleRr(nextToken); break;
             case "im": AssembleIm(nextToken); break;
+            case "db": AssembleDefineBytes(nextToken); break;
         }
         AssertEndOfLine(Peek());
+    }
+
+    private void AssembleDefineBytes(IToken? nextToken)
+    {
+        do
+        {
+            switch (nextToken)
+            {
+                case IntegerToken token: Consume();
+                    WriteByte((byte)token.Integer);
+                    break;
+                case StringToken token: Consume();
+                    WriteString(token.Value);
+                    break;
+                default: TokenError(nextToken); return;
+            }
+
+            switch (Peek())
+            {
+                case CommaToken: Consume(); break;
+                case NewLineToken or null: return;
+                case { } token: TokenError(token); return;
+            }
+
+            nextToken = Peek();
+        } while (true);
     }
 
     #region Assemble 'ld'

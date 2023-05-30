@@ -15,7 +15,7 @@ public class Tokenizer
     public int Line;
 
     private readonly List<IToken> _tokens = new();
-    private readonly StringBuffer _buffer = new(16);
+    private readonly StringBuffer _buffer = new(64);
     private readonly List<SyntaxError> _errors;
 
     public Tokenizer(string code, List<SyntaxError> errors)
@@ -80,6 +80,8 @@ public class Tokenizer
             '@' => ReadConstToken(),
             '\0' => new NewLineToken(Line),
             >= '0' and <= '9' => ReadIntegerToken(),
+            '\'' => ReadIntegerTokenChar(),
+            '"' => ReadStringToken(),
             >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(),
             _ => InvalidInitialCharToken(next)
         };
@@ -133,6 +135,19 @@ public class Tokenizer
         }
 
         return new VariableToken(_buffer.ToString(), Line);
+    }
+
+    private IToken ReadIntegerTokenChar()
+    {
+        Consume();
+        char value = Peek();
+        Consume();
+        if (Peek() == '\'')
+        {
+            Consume();
+            return new IntegerToken(value, Line);
+        }
+        return new BadToken(Line);
     }
 
     private IToken ReadIntegerToken()
@@ -240,6 +255,34 @@ public class Tokenizer
         Consume();
         return new LabelToken(_buffer.ToString(), Line);
 
+    }
+
+    private IToken ReadStringToken()
+    {
+        Consume();
+        while (Peek() is not '"' and not EndOfFile and not NewLine)
+        {
+            if (_buffer.Add(Peek()))
+            {
+                Consume();
+                continue;
+            }
+            
+            _errors.Add(new SyntaxError(Line));
+            while (Peek() is not EndOfFile and not NewLine)
+            {
+                Consume();
+            }
+            return new BadToken(Line);
+        }
+
+        if (Peek() == '"')
+        {
+            Consume();
+            return new StringToken(_buffer.ToString(), Line);
+        }
+        _errors.Add(new SyntaxError(Line));
+        return new BadToken(Line);
     }
     private static bool IsAlphanumeric(char value)
     {
