@@ -1,13 +1,23 @@
-@port.write 0x10
+%define port.write 0x10
 
 jp start
 msg: db "Hello, World!", 0
 start:
+    ld sp, 0x3FFF
+    
     ld hl, msg
-.loop:
-    ld a, (hl)
-    out (@port.write), a
-    inc hl
-    cp b
-    jp nz, .loop
+    call print
     halt
+
+
+
+print:
+    push af
+print.loop:
+    ld a, (hl)
+    out (port.write), a
+    inc hl
+    or a
+    jp nz, print.loop
+    pop af
+    ret

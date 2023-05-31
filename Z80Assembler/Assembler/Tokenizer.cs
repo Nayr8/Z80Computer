@@ -13,6 +13,8 @@ public class Tokenizer
     private readonly string _code;
     private int _cursor;
     public int Line = 1;
+    
+    private Dictionary<string, IToken[]> _macros = new();
 
     private readonly List<IToken> _tokens = new();
     private readonly StringBuffer _buffer = new(64);
@@ -35,6 +37,16 @@ public class Tokenizer
             {
                 _tokens.Add(token);
             }
+        }
+        
+        foreach (var macro in _macros)
+        {
+            Console.Write($"'{macro.Key}': ");
+            foreach (IToken token in macro.Value)
+            {
+                Console.Write($"'{token}' ");
+            }
+            Console.WriteLine();
         }
 
         return _tokens;
@@ -77,12 +89,12 @@ public class Tokenizer
             '-' => ConsumeAndReturn(new MinusToken(Line)),
             '\n' => ConsumeAndReturn(new NewLineToken(Line)),
             ';' => ConsumeComment(),
-            '@' => ReadConstToken(),
             '\0' => new NewLineToken(Line),
             >= '0' and <= '9' => ReadIntegerToken(),
             '\'' => ReadIntegerTokenChar(),
             '"' => ReadStringToken(),
             >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(),
+            '%' => ConsumeDefine(),
             _ => InvalidInitialCharToken(next)
         };
     }
@@ -99,18 +111,8 @@ public class Tokenizer
         _errors.Add(new SyntaxError(Line, next.ToString()));
         return new BadToken(Line);
     }
-    
-    private IToken? ConsumeComment()
-    {
-        do
-        {
-            Consume();
-        } while (Peek() is not NewLine and not EndOfFile);
 
-        return null;
-    }
-    
-    private IToken ReadConstToken()
+    private IToken? ConsumeDefine()
     {
         Consume();
         while (IsAlphanumeric(Peek()))
@@ -129,12 +131,61 @@ public class Tokenizer
             return new BadToken(Line);
         }
 
-        if (_buffer.Count == 0)
+        if (_buffer.ToString() != "define")
         {
-            _errors.Add(new SyntaxError(Line, "@"));
+            return new BadToken(Line);
+        }
+        
+        _buffer.Clear();
+
+        if (Peek() is not Space)
+        {
+            return new BadToken(Line);
+        }
+        Consume();
+        
+        while (IsAlphanumeric(Peek()))
+        {
+            if (_buffer.Add(Peek()))
+            {
+                Consume();
+                continue;
+            }
+            
+            _errors.Add(new SyntaxError(Line));
+            while (IsAlphanumeric(Peek()))
+            {
+                Consume();
+            }
+            return new BadToken(Line);
         }
 
-        return new VariableToken(_buffer.ToString(), Line);
+        string macroName = _buffer.ToString();
+
+        if (Peek() is not Space)
+        {
+            return new BadToken(Line);
+        }
+        Consume();
+
+        List<IToken> tokens = new();
+        while (Peek() is not NewLine and not EndOfFile)
+        {
+            _buffer.Clear();
+            tokens.Add(NextToken()!);
+        }
+        _macros.Add(macroName, tokens.ToArray());
+        return null;
+    }
+    
+    private IToken? ConsumeComment()
+    {
+        do
+        {
+            Consume();
+        } while (Peek() is not NewLine and not EndOfFile);
+
+        return null;
     }
 
     private IToken ReadIntegerTokenChar()
@@ -231,7 +282,7 @@ public class Tokenizer
         return new IntegerToken(int.Parse(_buffer.ToString()), Line);
     }
 
-    private IToken ReadTextOrLabel()
+    private IToken? ReadTextOrLabel()
     {
         _buffer.Add(Peek());
         Consume();
@@ -251,7 +302,19 @@ public class Tokenizer
             return new BadToken(Line);
         }
 
-        if (Peek() != ':') return new TextToken(_buffer.ToString(), Line);
+        if (Peek() != ':')
+        {
+            string text = _buffer.ToString();
+
+            if (!_macros.TryGetValue(text, out IToken[]? tokens)) return new TextToken(text, Line);
+            
+            foreach (IToken token in tokens)
+            {
+                _tokens.Add(token);
+            }
+            return null;
+
+        }
         Consume();
         return new LabelToken(_buffer.ToString(), Line);
 

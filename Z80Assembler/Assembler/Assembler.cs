@@ -112,11 +112,6 @@ public class Assembler
             case LabelToken token:
                 AddLabelSource(token.Label);
                 break;
-            case VariableToken token:
-                int? value = ResolveMath();
-                if (value is null) { TokenError(token); return; }
-                _variables.Add(token.Label, value.Value);
-                break;
             case TextToken token:
                 AssembleInstruction(token);
                 break;
@@ -152,8 +147,6 @@ public class Assembler
         int? result;
         switch (Peek())
         {
-            case VariableToken variableToken:
-                result = (_variables.TryGetValue(variableToken.Label, out int value) ? value : null); break;
             case IntegerToken integerToken: result = integerToken.Integer; break;
             case MinusToken: Consume();
                 if (Peek() is IntegerToken token)
@@ -1806,12 +1799,12 @@ public class Assembler
     {
         switch (nextToken)
         {
-            case TextToken { Text: "bc" }: WriteByte(0xC1); return;
-            case TextToken { Text: "de" }: WriteByte(0xD1); return;
-            case TextToken { Text: "hl" }: WriteByte(0xE1); return;
-            case TextToken { Text: "af" }: WriteByte(0xF1); return;
-            case TextToken { Text: "ix" }: WriteByte(0xDD); WriteByte(0xE1); return;
-            case TextToken { Text: "iy" }: WriteByte(0xFD); WriteByte(0xE1); return;
+            case TextToken { Text: "bc" }: Consume(); WriteByte(0xC1); return;
+            case TextToken { Text: "de" }: Consume(); WriteByte(0xD1); return;
+            case TextToken { Text: "hl" }: Consume(); WriteByte(0xE1); return;
+            case TextToken { Text: "af" }: Consume(); WriteByte(0xF1); return;
+            case TextToken { Text: "ix" }: Consume(); WriteByte(0xDD); WriteByte(0xE1); return;
+            case TextToken { Text: "iy" }: Consume(); WriteByte(0xFD); WriteByte(0xE1); return;
         }
         TokenError(nextToken);
     }
@@ -1869,22 +1862,6 @@ public class Assembler
                 Consume();
                 WriteByte(0xD3);
                 WriteByte((byte)integerToken.Integer);
-                if (!AssertNextToken<RBracketToken>()) { return; }
-                Consume();
-                if (!AssertNextToken<CommaToken>()) { return; }
-                Consume();
-
-                if (Peek() is not TextToken { Text: "a" }) { TokenError(nextToken); return; }
-                Consume();
-                return;
-            case VariableToken variableToken:
-                Consume();
-                WriteByte(0xD3);
-                if (!_variables.TryGetValue(variableToken.Label, out int value))
-                {
-                    TokenError(nextToken); return;
-                }
-                WriteByte((byte)value);
                 if (!AssertNextToken<RBracketToken>()) { return; }
                 Consume();
                 if (!AssertNextToken<CommaToken>()) { return; }

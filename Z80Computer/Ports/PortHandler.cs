@@ -9,9 +9,10 @@ namespace Z80Computer
 {
     public class PortHandler : IPorts
     {
-        private Memory _memory;
+        private readonly Memory _memory;
+        private SimpleIdeStorage _drive;
 
-        public const byte
+        private const byte
             MemoryPage1 = 0x01, // 0x2000 - 0x3FFF
             MemoryPage2 = 0x02, // 0x4000 - 0x5FFF
             MemoryPage3 = 0x03, // 0x6000 - 0x7FFF
@@ -20,7 +21,13 @@ namespace Z80Computer
             MemoryPage6 = 0x06, // 0xC000 - 0xDFFF
             MemoryPage7 = 0x07, // 0xE000 - 0xFFFF
 
-            WriteByte = 0x10;
+            WriteByte = 0x10,
+
+            IdeHigherByte = 0x20,
+            IdeLowerByte = 0x21,
+            IdeAddress = 0x22,
+            IdeStatus = 0x23,
+            IdeReadWrite = 0x24;
 
         public PortHandler(Memory memory)
         {
@@ -33,6 +40,9 @@ namespace Z80Computer
             {
                 (>=MemoryPage1) and (<=MemoryPage7) => _memory.PageTable[port - MemoryPage1],
                 WriteByte => 0,
+                IdeHigherByte => _drive.ReadHigherData(),
+                IdeLowerByte => _drive.ReadLowerData(),
+                IdeStatus => _drive.GetStatus(),
                 _ => 0,
             };
         }
@@ -42,6 +52,10 @@ namespace Z80Computer
             switch (port) {
                 case (>= MemoryPage1) and (<= MemoryPage7): _memory.PageTable[port - MemoryPage1] = value; break;
                 case WriteByte: Console.Write((char)value); break;
+                case IdeHigherByte: _drive.WriteHigherData(value); break;
+                case IdeLowerByte: _drive.WriteLowerData(value); break;
+                case IdeAddress: _drive.SetAddress(value); break;
+                case IdeReadWrite: _drive.SetReadWrite(value); break;
             }
         }
     }
