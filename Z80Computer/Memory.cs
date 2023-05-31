@@ -13,14 +13,17 @@ namespace Z80Computer
             0, 1, 2, 3, 4, 5, 6
         };
 
+        private const int KernelRamSize = 0x800; // 512B
+        private readonly byte[] _kernelRom = new byte[0x2000 - KernelRamSize];
+        private readonly byte[] _kernelRam = new byte[KernelRamSize];
         private readonly byte[] _memory = new byte[0x200000]; // 2 MiB
-        private readonly byte[] _kernelRom = new byte[0x2000];
         
         public byte ReadByte(int address)
         {
             if (address < 0x2000)
             {
-                return _kernelRom[address]; // Kernel ROM
+                if (address < 0x1800) return _kernelRom[address]; // Kernel ROM
+                return _kernelRam[address - 0x1800];
             }
             int offset = PageTable[address / 0x2000 - 1] * 0x2000;
 
@@ -29,8 +32,8 @@ namespace Z80Computer
 
         public void WriteByte(int address, byte value)
         {
-            if (address < 0x2000)
-            {
+            if (address < 0x2000) {
+                if (address >= 0x1800) _kernelRam[address - 0x1800] = value; // Kernel ROM
                 return; // ROM
             }
             int offset = PageTable[address / 0x2000 - 1] * 0x2000;
