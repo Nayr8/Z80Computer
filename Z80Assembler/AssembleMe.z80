@@ -2,8 +2,11 @@
 
 jp start
 msg: db "Hello, World!", 0
+
+
+
 start:
-    ld sp, 0x3FFF
+    ld sp, 0x3FFF ; init stack
     
     ld hl, msg
     call print

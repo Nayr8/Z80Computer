@@ -38,16 +38,6 @@ public class Tokenizer
                 _tokens.Add(token);
             }
         }
-        
-        foreach (var macro in _macros)
-        {
-            Console.Write($"'{macro.Key}': ");
-            foreach (IToken token in macro.Value)
-            {
-                Console.Write($"'{token}' ");
-            }
-            Console.WriteLine();
-        }
 
         return _tokens;
     }
@@ -131,9 +121,11 @@ public class Tokenizer
             return new BadToken(Line);
         }
 
-        if (_buffer.ToString() != "define")
+        bool undefine = false;
+        switch (_buffer.ToString())
         {
-            return new BadToken(Line);
+            case "undefine": undefine = true; break;
+            case not "define": return new BadToken(Line);
         }
         
         _buffer.Clear();
@@ -161,6 +153,10 @@ public class Tokenizer
         }
 
         string macroName = _buffer.ToString();
+        if (undefine)
+        {
+            return _macros.Remove(macroName) ? null : new BadToken(Line);
+        }
 
         if (Peek() is not Space)
         {
