@@ -4,7 +4,7 @@ _kernel_start:
     ei
 
     ld hl, msg
-    call util.print
+    call util.println
     halt
 
 msg: db "Hello, World!", 0

@@ -1,0 +1,26 @@
+
+; print (hl)
+util.print:
+    push af
+util.print.loop:
+    ld a, (hl)
+    out (port.write), a
+    inc hl
+    or a
+    jp nz, util.print.loop
+    pop af
+    ret
+
+; println (hl)
+util.println:
+    push af
+util.println.loop:
+    ld a, (hl)
+    out (port.write), a
+    inc hl
+    or a
+    jp nz, util.println.loop
+    ld a, constants.new_line
+    out (port.write), a
+    pop af
+    ret

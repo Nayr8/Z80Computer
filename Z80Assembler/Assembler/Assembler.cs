@@ -33,7 +33,7 @@ public class Assembler
         _codeStartAddress = buildSteps[0].AddressAlign!.Value;
         foreach (BuildStep step in buildSteps)
         {
-            string code = File.ReadAllText(Path.Combine(projectDirectoryPath, step.File));
+            string code = File.ReadAllText(Path.Combine(projectDirectoryPath, "src", step.File));
             // Normalise line endings
             code = code.Replace("\r\n", "\n");
             code = code.Replace("\r", "\n");
@@ -228,6 +228,7 @@ public class Assembler
             case "rr": AssembleRr(nextToken); break;
             case "im": AssembleIm(nextToken); break;
             case "db": AssembleDefineBytes(nextToken); break;
+            case "dw": AssembleDefineWords(nextToken); break;
         }
         AssertEndOfLine(Peek());
     }
@@ -243,6 +244,28 @@ public class Assembler
                     break;
                 case StringToken token: Consume();
                     WriteString(token.Value);
+                    break;
+                default: TokenError(nextToken); return;
+            }
+
+            switch (Peek())
+            {
+                case CommaToken: Consume(); break;
+                case NewLineToken or null: return;
+                case { } token: TokenError(token); return;
+            }
+
+            nextToken = Peek();
+        } while (true);
+    }
+    
+    private void AssembleDefineWords(IToken? nextToken) {
+        do
+        {
+            switch (nextToken)
+            {
+                case IntegerToken token: Consume();
+                    WriteAddress((byte)token.Integer);
                     break;
                 default: TokenError(nextToken); return;
             }
@@ -1817,7 +1840,7 @@ public class Assembler
             case TextToken { Text: "pe" }: Consume(); WriteByte(0xE8); return;
             case TextToken { Text: "p" }: Consume(); WriteByte(0xF0); return;
             case TextToken { Text: "m" }: Consume(); WriteByte(0xF8); return;
-            case NewLineToken or null: Consume(); WriteByte(0xC9); return;
+            case NewLineToken or null: WriteByte(0xC9); return;
         }
         TokenError(nextToken);
     }
@@ -2713,6 +2736,7 @@ public class Assembler
                 _assembledCode[labelLocation.CodePosition + 1] = (byte)(address >> 8);
                 continue;
             }
+            Console.WriteLine($"Label {labelLocation.Label} is missing");
             _errors.Add(new SyntaxError(-1));
         }
         foreach (LabelLocation labelLocation in  _labelPointerRelative)
@@ -2722,6 +2746,7 @@ public class Assembler
                 _assembledCode[labelLocation.CodePosition] += (byte)value;
                 continue;
             }
+            Console.WriteLine($"Label {labelLocation.Label} is missing");
             _errors.Add(new SyntaxError(-1));
         }
     }
