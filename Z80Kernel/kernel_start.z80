@@ -1,0 +1,10 @@
+_kernel_start:
+    ld sp, memory.stack_top
+    im 1
+    ei
+
+    ld hl, msg
+    call util.print
+    halt
+
+msg: db "Hello, World!", 0

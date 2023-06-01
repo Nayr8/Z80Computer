@@ -3,11 +3,10 @@
 
 using Z80Assembler;
 
+const string path = "../../../../Z80Kernel";
 
-string code = File.ReadAllText("../../../AssembleMe.z80");
-
-Assembler assembler = new Assembler(code, 0x0000);
-byte[] assembledCode = assembler.Assemble();
+Assembler assembler = new Assembler();
+byte[] assembledCode = assembler.Assemble(path);
 
 if (assembler.Errors())
 {
@@ -19,7 +18,7 @@ if (assembler.Errors())
 
 string byteOrBytes = assembledCode.Length > 1 ? "bytes" : "byte";
 Console.WriteLine($"Writing {assembledCode.Length} {byteOrBytes} to AssembledZ80.bin");
-File.Delete("../../../AssembledZ80.bin");
-FileStream output = File.Open("../../../AssembledZ80.bin", FileMode.OpenOrCreate);
+File.Delete("../../../../Z80Kernel/Build/Kernel.bin");
+FileStream output = File.Open("../../../../Z80Kernel/Build/Kernel.bin", FileMode.OpenOrCreate);
 output.Write(assembledCode);
 output.Flush();

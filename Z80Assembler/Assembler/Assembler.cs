@@ -7,7 +7,7 @@ public class Assembler
 {
     private readonly List<SyntaxError> _errors = new();
 
-    private ushort _codeStartAddress;
+    private int _codeStartAddress;
 
     private readonly Tokenizer _tokenizer;
     private List<IToken> _tokens = new();
@@ -20,19 +20,38 @@ public class Assembler
     private readonly List<LabelLocation> _labelPointerRelative = new(); // Target is single byte
     private readonly List<LabelLocation> _labelPointerAbsolute = new(); // Target is two bytes
 
-    public Assembler(string code, ushort codeStartAddress)
+    public Assembler()
     {
-        // Normalise line endings
-        code = code.Replace("\r\n", "\n");
-        code = code.Replace("\r", "\n");
-
-        _tokenizer = new Tokenizer(code, _errors);
-        _codeStartAddress = codeStartAddress;
+        _tokenizer = new Tokenizer(_errors);
     }
 
-    public byte[] Assemble()
+    public byte[] Assemble(string projectDirectoryPath)
     {
-        _tokens = _tokenizer.Tokenize();
+        BuildFileParser buildFileParser = new(projectDirectoryPath);
+        BuildStep[] buildSteps = buildFileParser.Parse();
+        
+        _codeStartAddress = buildSteps[0].AddressAlign!.Value;
+        foreach (BuildStep step in buildSteps)
+        {
+            string code = File.ReadAllText(Path.Combine(projectDirectoryPath, step.File));
+            // Normalise line endings
+            code = code.Replace("\r\n", "\n");
+            code = code.Replace("\r", "\n");
+
+            if (step.AddressAlign is not null and var align)
+            {
+                _tokenizer.Tokens.Add(new AbsoluteAlignToken(align.Value,
+                    _tokenizer.Tokens.Count > 0 ? _tokenizer.Tokens.Last().Line : 1));
+            }
+            else
+            {
+                _tokenizer.Tokens.Add(new NewLineToken(_tokenizer.Tokens.Count > 0 ? _tokenizer.Tokens.Last().Line : 1));
+            }
+            _tokenizer.Tokenize(code);
+        }
+
+        _tokens = _tokenizer.Tokens;
+        
         if (_errors.Count > 0)
         {
             return new byte[]{1};
@@ -99,7 +118,7 @@ public class Assembler
 
     private void ConsumeTokenLine()
     {
-        while (Peek() is not NewLineToken and not null)
+        while (Peek() is not NewLineToken and not null and not AbsoluteAlignToken)
         {
             Consume();
         }
@@ -116,6 +135,18 @@ public class Assembler
                 AssembleInstruction(token);
                 break;
             case NewLineToken or null: break;
+            case AbsoluteAlignToken token:
+                if (_assembledCode.Count >= token.AlignAddress && _assembledCode.Count != 0)
+                {
+                    _errors.Add(new SyntaxError(token.Line));
+                    break;
+                }
+
+                while (_assembledCode.Count < token.AlignAddress)
+                {
+                    WriteByte(0);
+                }
+                break;
             case { } token:
                 TokenError(token);
                 break;
@@ -1085,9 +1116,9 @@ public class Assembler
         WriteByte(0xED);
         switch (nextToken)
         {
-            case IntegerToken { Integer: 0 }: WriteByte(0x46); return;
-            case IntegerToken { Integer: 1 }: WriteByte(0x56); return;
-            case IntegerToken { Integer: 2 }: WriteByte(0x5E); return;
+            case IntegerToken { Integer: 0 }: Consume(); WriteByte(0x46); return;
+            case IntegerToken { Integer: 1 }: Consume(); WriteByte(0x56); return;
+            case IntegerToken { Integer: 2 }: Consume(); WriteByte(0x5E); return;
         }
         TokenError(nextToken);
     }
@@ -2652,7 +2683,7 @@ public class Assembler
 
     private void AssertEndOfLine(IToken? token)
     {
-        if (token is NewLineToken or null) return;
+        if (token is NewLineToken or null or AbsoluteAlignToken) return;
         TokenError(token);
     }
 

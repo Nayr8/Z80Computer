@@ -6,12 +6,11 @@ namespace Z80Computer
     {
         private Z80 _cpu;
 
-
-        public Computer(byte[] code)
+        public Computer(byte[] rom)
         {
-            Memory memory = new Memory();
-            memory.WriteToRom(0, code);
-            PortHandler portHandler = new PortHandler(memory);
+            Memory memory = new();
+            memory.WriteToRom(0, rom);
+            PortHandler portHandler = new(memory);
             _cpu = new Z80(memory, portHandler);
         }
 

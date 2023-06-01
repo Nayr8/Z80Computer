@@ -1,0 +1,14 @@
+; Port
+%define port.mem_page.2 0x02
+%define port.mem_page.3 0x03
+%define port.mem_page.4 0x04
+%define port.mem_page.5 0x05
+%define port.mem_page.6 0x06
+%define port.mem_page.7 0x07
+%define port.write 0x10
+
+; Memory
+%define memory.kernel_ram_start 0x1800
+%define memory.kernel_ram_size 0x800 ; 2 KiB
+%define memory.kernel_ram_end 0x2000
+%define memory.stack_top 0x1FFF

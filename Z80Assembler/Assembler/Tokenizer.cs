@@ -10,36 +10,37 @@ public class Tokenizer
     private const char NewLine = '\n';
     private const char Space = ' ';
     
-    private readonly string _code;
+    private string _code;
     private int _cursor;
     public int Line = 1;
     
     private Dictionary<string, IToken[]> _macros = new();
 
-    private readonly List<IToken> _tokens = new();
+    public List<IToken> Tokens { get; } = new();
     private readonly StringBuffer _buffer = new(64);
     private readonly List<SyntaxError> _errors;
 
-    public Tokenizer(string code, List<SyntaxError> errors)
+    public Tokenizer(List<SyntaxError> errors)
     {
-        _code = code;
         _errors = errors;
     }
 
-    public List<IToken> Tokenize()
+    public void Tokenize(string code)
     {
+        _code = code;
+        Line = 1;
+        _cursor = 0;
+        // TODO file name for errors
         while (Peek() is not EndOfFile)
         {
             IToken? token = NextToken();
             _buffer.Clear();
             // newline 
-            if (token is not null && (token is not NewLineToken || (token is NewLineToken && (_tokens.Count is 0 || _tokens.Last() is not NewLineToken))))
+            if (token is not null && (token is not NewLineToken || (token is NewLineToken && (Tokens.Count is 0 || Tokens.Last() is not NewLineToken))))
             {
-                _tokens.Add(token);
+                Tokens.Add(token);
             }
         }
-
-        return _tokens;
     }
 
     private char Peek()
@@ -83,7 +84,7 @@ public class Tokenizer
             >= '0' and <= '9' => ReadIntegerToken(),
             '\'' => ReadIntegerTokenChar(),
             '"' => ReadStringToken(),
-            >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' => ReadTextOrLabel(),
+            >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' or '_' => ReadTextOrLabel(),
             '%' => ConsumeDefine(),
             _ => InvalidInitialCharToken(next)
         };
@@ -306,7 +307,7 @@ public class Tokenizer
             
             foreach (IToken token in tokens)
             {
-                _tokens.Add(token);
+                Tokens.Add(token);
             }
             return null;
 

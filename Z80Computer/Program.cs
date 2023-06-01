@@ -2,6 +2,6 @@
 
 using Z80Computer;
 
-byte[] code = File.ReadAllBytes("../../../../Z80Assembler/AssembledZ80.bin");
-Computer computer = new Computer(code);
+byte[] rom = File.ReadAllBytes("../../../../Z80Kernel/Build/Kernel.bin");
+Computer computer = new(rom);
 computer.Run();
