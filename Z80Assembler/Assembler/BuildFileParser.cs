@@ -11,8 +11,9 @@ public class BuildFileParser
     
     private int _startAddress = -1;
     private bool _startAddressUsed = false;
-    private string _buildFile;
+    private readonly string _buildFile;
     private int _cursor;
+    private string _projectDirectoryPath;
     
     private readonly StringBuffer _buffer = new(64);
 
@@ -20,6 +21,7 @@ public class BuildFileParser
 
     public BuildFileParser(string projectDirectoryPath)
     {
+        _projectDirectoryPath = projectDirectoryPath;
         _buildFile = File.ReadAllText(Directory.GetFiles(projectDirectoryPath, "build.zbld")[0]);
     }
 
@@ -72,14 +74,37 @@ public class BuildFileParser
             Consume();
         }
 
-        if (_startAddressUsed)
+        AddBuildFolderOrFile(_buffer.ToString());
+    }
+
+    private void AddBuildFolderOrFile(string directoryOrFile)
+    {
+        try
         {
-            _buildSteps.Add(new BuildStep(_buffer.ToString(), null));
-        }
-        else
+            string dir = Directory.GetDirectories(Path.Combine(_projectDirectoryPath, "src"), directoryOrFile)[0];
+            foreach (string file in Directory.GetFiles(dir))
+            {
+                if (_startAddressUsed)
+                {
+                    _buildSteps.Add(new BuildStep(Path.Combine(directoryOrFile, Path.GetFileName(file)), null));
+                }
+                else
+                {
+                    _buildSteps.Add(new BuildStep(Path.Combine(directoryOrFile, Path.GetFileName(file)), _startAddress));
+                    _startAddressUsed = true;
+                }
+            }
+        } catch (Exception e)
         {
-            _buildSteps.Add(new BuildStep(_buffer.ToString(), _startAddress));
-            _startAddressUsed = true;
+            if (_startAddressUsed)
+            {
+                _buildSteps.Add(new BuildStep(directoryOrFile, null));
+            }
+            else
+            {
+                _buildSteps.Add(new BuildStep(directoryOrFile, _startAddress));
+                _startAddressUsed = true;
+            }
         }
     }
 
