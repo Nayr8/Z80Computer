@@ -32,6 +32,7 @@ namespace Z80Computer
         public PortHandler(Memory memory)
         {
             _memory = memory;
+            _drive = new SimpleIdeStorage();
         }
 
         public byte Read(byte port)

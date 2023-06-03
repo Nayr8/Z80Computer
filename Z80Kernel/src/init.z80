@@ -1,1 +1,2 @@
+ld sp, memory.stack_top
 jp _kernel_start

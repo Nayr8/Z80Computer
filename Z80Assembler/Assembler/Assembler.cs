@@ -174,24 +174,44 @@ public class Assembler
 
     private int? ResolveMath()
     {
-        // TODO add actual maths
-        int? result;
+        int num = 0;
         switch (Peek())
         {
-            case IntegerToken integerToken: result = integerToken.Integer; break;
+            case IntegerToken integerToken: Consume(); num = integerToken.Integer; break;
             case MinusToken: Consume();
                 if (Peek() is IntegerToken token)
                 {
-                    result = -token.Integer; break;
+                    Consume();
+                    num = -token.Integer; break;
                 }
-                result = null; break;
-            default: result = null; break;
+                return null;
+            default: return null;
         }
-        if (result is not null)
+        while (true)
         {
-            Consume();
+            switch (Peek())
+            {
+                case PlusToken:
+                    Consume();
+                    if (Peek() is IntegerToken addToken)
+                    {
+                        Consume();
+                        num += addToken.Integer;
+                        break;
+                    }
+                    return null;
+                case MinusToken:
+                    Consume();
+                    if (Peek() is IntegerToken minusToken)
+                    {
+                        Consume();
+                        num -= minusToken.Integer;
+                        break;
+                    }
+                    return null;
+                default: return num;
+            }
         }
-        return result;
     }
 
     private void AssembleInstruction(TextToken token)

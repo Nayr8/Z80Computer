@@ -5,3 +5,9 @@
 %define port.mem_page.6 0x06
 %define port.mem_page.7 0x07
 %define port.write 0x10
+
+%define port.ide.upper_byte 0x20
+%define port.ide.lower_byte 0x21
+%define port.ide.address 0x22
+%define port.ide.status 0x23
+%define port.ide.readwrite 0x24

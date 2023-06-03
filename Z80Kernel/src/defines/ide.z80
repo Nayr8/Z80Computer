@@ -1,0 +1,25 @@
+%define ide.read 0b01
+%define ide.write 0b10
+
+%define ide.address.data 0b000
+%define ide.address.error_code 0b001
+%define ide.address.sector_transfer_count 0b010
+%define ide.address.sector_address_lba_0 0b011
+%define ide.address.sector_address_lba_1 0b100
+%define ide.address.sector_address_lba_2 0b101
+%define ide.address.sector_address_lba_3 0b110
+%define ide.readwrite_status 0b111
+%define ide.issue_command 0b111
+
+%define ide.error.bit.dma_missing 0
+%define ide.error.bit.track000_missing 1
+%define ide.error.bit.command_aborted 2
+%define ide.error.bit.id_not_found 4
+%define ide.error.bit.ecc_error 6
+%define ide.error.bit.bad_block 7
+
+%define ide.status.bit.error 0
+%define ide.status.bit.data_request_ready 3
+%define ide.status.bit.write_fault 5
+%define ide.status.bit.ready 6
+%define ide.status.bit.busy 7

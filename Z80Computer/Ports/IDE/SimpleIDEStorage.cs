@@ -1,17 +1,5 @@
 namespace Z80Computer;
 
-public enum IdeAddresses : byte
-{
-    DataPort = 0b000,
-    ReadErrorCode = 0b001,
-    NumberOfSectorsToTransfer = 0b010,
-    SectorAddressLba0 = 0b011,
-    SectorAddressLba1 = 0b100,
-    SectorAddressLba2 = 0b101,
-    SectorAddressLba3 = 0b110,
-    ReadStatusWriteIssueCommand = 0b111,
-}
-
 public class SimpleIdeStorage
 {
     private readonly StatusFlags _status = new StatusFlags();
@@ -20,6 +8,8 @@ public class SimpleIdeStorage
         readBit = 0,
         writeBit = 1,
         resetBit = 2;
+
+    private IdeAddresses _address = 0;
 
     public SimpleIdeStorage()
     {
@@ -54,7 +44,7 @@ public class SimpleIdeStorage
 
     public void SetAddress(byte address)
     {
-        
+        _address = (IdeAddresses)(address & 0b111);
     }
 
     public void SetReadWrite(byte readWrite)
