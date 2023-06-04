@@ -1,11 +1,13 @@
+using Z80CCompiler.Parsing.ASTNodes.Factor;
+
 namespace Z80CCompiler.Parsing.ASTNodes;
 
 public class Term
 {
     public object Factor { get; }
-    public List<(MulDivOp, object)> MulDivFactors = new();
+    public List<(MulDivOp, IFactor)> MulDivFactors = new();
 
-    public Term(object factor)
+    public Term(IFactor factor)
     {
         Factor = factor;
     }

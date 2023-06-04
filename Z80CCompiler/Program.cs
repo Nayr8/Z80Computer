@@ -17,6 +17,6 @@ Console.WriteLine("[{0}]", string.Join(", ", tokens));
 
 Parser parser = new(tokens);
 AbstractSyntaxTree ast = parser.Parse();
-Assembler assembler = new(ast);
-AssembledCode assembledCode = assembler.Assemble();
+CodeGenerator codeGenerator = new(ast);
+GeneratedCode generatedCode = codeGenerator.Assemble();
 _ = 0;

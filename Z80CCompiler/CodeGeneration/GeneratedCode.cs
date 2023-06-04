@@ -1,6 +1,6 @@
 namespace Z80CCompiler.Assembling;
 
-public class AssembledCode
+public class GeneratedCode
 {
     public List<byte> Code { get; } = new();
     public Dictionary<string, int> Labels { get; } = new ();

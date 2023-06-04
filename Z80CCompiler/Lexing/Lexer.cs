@@ -35,7 +35,39 @@ public class Lexer
                 case '*': Consume(); Tokens.Add(new MultiplicationToken()); break;
                 case '/': Consume(); Tokens.Add(new DivisionToken()); break;
                 case '~': Consume(); Tokens.Add(new BitwiseComplementToken()); break;
-                case '!': Consume(); Tokens.Add(new LogicalNegationToken()); break;
+                case '!': Consume();
+                    if (Peek() is '=')
+                    {
+                        Consume();
+                        Tokens.Add(new NotEqualToken());
+                        break;
+                    }
+                    Tokens.Add(new LogicalNegationToken()); break;
+                case '<': Consume();
+                    if (Peek() is '=')
+                    {
+                        Consume();
+                        Tokens.Add(new LessThanEqualToken());
+                        break;
+                    }
+                    Tokens.Add(new LessThanToken()); break;
+                case '>': Consume();
+                    if (Peek() is '=')
+                    {
+                        Consume();
+                        Tokens.Add(new GreaterThanEqualToken());
+                        break;
+                    }
+                    Tokens.Add(new GreaterThanToken()); break;
+                case '&': Consume();
+                    if (Peek() is not '&') throw new Exception("&");
+                    Consume(); Tokens.Add(new AndToken()); break;
+                case '|': Consume();
+                    if (Peek() is not '|') throw new Exception("|");
+                    Consume(); Tokens.Add(new OrToken()); break;
+                case '=': Consume();
+                    if (Peek() is not '=') throw new Exception("=");
+                    Consume(); Tokens.Add(new EqualToken()); break;
                 case >= 'a' and <= 'z' or >= 'A' and <= 'Z': ConsumeKeywordOrIdentifier(); break;
                 case >= '0' and <= '9': ConsumeIntegerLiteral(); break;
                 case ' ' or '\n' or '\r': Consume(); break;

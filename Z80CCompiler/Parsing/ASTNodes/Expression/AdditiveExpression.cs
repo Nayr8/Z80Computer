@@ -1,11 +1,11 @@
 namespace Z80CCompiler.Parsing.ASTNodes;
 
-public class Expression
+public class AdditiveExpression
 {
     public Term Term { get; }
     public List<(AddSubOp, Term)> AddSubTerms = new();
 
-    public Expression(Term term)
+    public AdditiveExpression(Term term)
     {
         Term = term;
     }

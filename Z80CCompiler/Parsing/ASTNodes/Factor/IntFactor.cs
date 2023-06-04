@@ -1,6 +1,8 @@
+using Z80CCompiler.Parsing.ASTNodes.Factor;
+
 namespace Z80CCompiler.Parsing.ASTNodes;
 
-public class IntFactor
+public class IntFactor : IFactor
 {
     public int Integer { get; }
 

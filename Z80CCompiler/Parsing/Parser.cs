@@ -1,4 +1,5 @@
 using Z80CCompiler.Parsing.ASTNodes;
+using Z80CCompiler.Parsing.ASTNodes.Factor;
 using Z80CCompiler.Parsing.Tokens;
 
 namespace Z80CCompiler.Parsing;
@@ -69,8 +70,67 @@ public class Parser
 
     private Expression ParseExpression()
     {
-        Term firstTerm = ParseTerm();
-        Expression expression = new(firstTerm);
+        Expression expression = new(ParseLogicalAndExpression());
+        while (Peek() is OrToken)
+        {
+            Next();
+            LogicalAndExpression logicalAndExpression = ParseLogicalAndExpression();
+            expression.OrEqualityExpressions.Add(logicalAndExpression);
+        }
+        return expression;
+    }
+
+    private LogicalAndExpression ParseLogicalAndExpression()
+    {
+        LogicalAndExpression logicalAndExpression = new(ParseEqualityExpression());
+        while (Peek() is AndToken)
+        {
+            Next();
+            EqualityExpression relationalExpression = ParseEqualityExpression();
+            logicalAndExpression.AndEqualityExpressions.Add(relationalExpression);
+        }
+        return logicalAndExpression;
+    }
+
+    private EqualityExpression ParseEqualityExpression()
+    {
+        EqualityExpression equalityExpression = new(ParseRelationalExpression());
+        while (Peek() is EqualToken or NotEqualToken)
+        {
+            EqualityOp op = Next() switch
+            {
+                EqualToken => EqualityOp.Equal,
+                NotEqualToken => EqualityOp.NotEqual,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            RelationalExpression relationalExpression = ParseRelationalExpression();
+            equalityExpression.EqualityRelationalExpressions.Add((op, relationalExpression));
+        }
+        return equalityExpression;
+    }
+
+    private RelationalExpression ParseRelationalExpression()
+    {
+        RelationalExpression relationalExpression = new(ParseAdditiveExpression());
+        while (Peek() is LessThanToken or LessThanEqualToken or GreaterThanToken or GreaterThanEqualToken)
+        {
+            RelationalOp op = Next() switch
+            {
+                LessThanToken => RelationalOp.LessThan,
+                LessThanEqualToken => RelationalOp.LessThanEqual,
+                GreaterThanToken => RelationalOp.GreaterThan,
+                GreaterThanEqualToken => RelationalOp.GreaterThanEqual,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            AdditiveExpression additiveExpression = ParseAdditiveExpression();
+            relationalExpression.RelationalAdditiveExpressions.Add((op, additiveExpression));
+        }
+        return relationalExpression;
+    }
+
+    private AdditiveExpression ParseAdditiveExpression()
+    {
+        AdditiveExpression additiveExpression = new(ParseTerm());
         while (Peek() is AdditionToken or NegationToken)
         {
             AddSubOp op = Next() switch
@@ -80,15 +140,14 @@ public class Parser
                 _ => throw new ArgumentOutOfRangeException()
             };
             Term term = ParseTerm();
-            expression.AddSubTerms.Add((op, term));
+            additiveExpression.AddSubTerms.Add((op, term));
         }
-        return expression;
+        return additiveExpression;
     }
 
     private Term ParseTerm()
     {
-        object firstFactor = ParseFactor();
-        Term term = new(firstFactor);
+        Term term = new(ParseFactor());
         while (Peek() is MultiplicationToken or DivisionToken)
         {
             MulDivOp op = Next() switch
@@ -97,13 +156,13 @@ public class Parser
                 DivisionToken => MulDivOp.Div,
                 _ => throw new ArgumentOutOfRangeException()
             };
-            object factor = ParseFactor();
+            IFactor factor = ParseFactor();
             term.MulDivFactors.Add((op, factor));
         }
         return term;
     }
 
-    private object ParseFactor()
+    private IFactor ParseFactor()
     {
         switch (Next())
         {
