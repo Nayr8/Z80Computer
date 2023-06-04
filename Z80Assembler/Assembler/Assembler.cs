@@ -91,7 +91,7 @@ public class Assembler
     
     private void AddLabelPointerRelative(string label)
     {
-        _labelPointerRelative.Add(new LabelLocation(label, _assembledCode.Count - 2));
+        _labelPointerRelative.Add(new LabelLocation(label, _assembledCode.Count - 1));
     }
     
     private void AddLabelPointerAbsolute(string label)
@@ -2763,7 +2763,7 @@ public class Assembler
         {
             if (_labelSources.TryGetValue(labelLocation.Label, out int value))
             {
-                _assembledCode[labelLocation.CodePosition] += (byte)value;
+                _assembledCode[labelLocation.CodePosition] += (byte)(value - labelLocation.CodePosition);
                 continue;
             }
             Console.WriteLine($"Label {labelLocation.Label} is missing");
