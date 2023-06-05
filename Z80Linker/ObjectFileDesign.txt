@@ -1,5 +1,5 @@
 ﻿; all offsets are from base
-
+magicNumber: [u8; 4], ; 0x0B 1F 11 E0
 headerCount: u16,
 labelCount: u16,
 absoluteLabelDestCount: u16,
@@ -13,11 +13,16 @@ SectionHeaders: {
 }[],
 Labels: {
 	labelOffset: u16
-	labelName: u8
+	labelNameOffset: u16
+	labelNameLength: u8
+	codeSectionName: u16
+	codeSectionNameLen: u8
+	destOffset: u16 ; offset in selected section
 }[],
 AbsoluteLabelDest: {
 	labelOffset: u16
 	labelName: u16
+	labelNameLength: u8
 	codeSectionName: u16
 	codeSectionNameLen: u8
 	destOffset: u16 ; offset in selected section
@@ -25,6 +30,7 @@ AbsoluteLabelDest: {
 RelativeLabelDest: {
 	labelOffset: u16
 	labelName: u16
+	labelNameLength: u8
 	codeSectionName: u16
 	codeSectionNameLen: u8
 	destOffset: u16 ; offset in selected section
@@ -35,5 +41,5 @@ AbsolutePositionsToBeOffset: { ; add sections start position to each of these 16
 	destOffset: u16 ; offset in selected section
 }[],
 LabelDestAbsolute
-Sections: [[u8]],
+Sections: [[u8], numberOfPositionToBeOffset: u8, [absolutePositionToBeOffset: u16]]],
 Strings: [[u8]]
