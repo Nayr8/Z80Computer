@@ -1,0 +1,39 @@
+﻿; all offsets are from base
+
+headerCount: u16,
+labelCount: u16,
+absoluteLabelDestCount: u16,
+relativeLabelDestCount: u16,
+absolutePositonsToBeOffset: u16
+SectionHeaders: {
+	headerOffset: u16 | null, ; null means uninit
+	headerSize: u16,
+	headerNamePtr: u16,
+	headerNameLen: u8
+}[],
+Labels: {
+	labelOffset: u16
+	labelName: u8
+}[],
+AbsoluteLabelDest: {
+	labelOffset: u16
+	labelName: u16
+	codeSectionName: u16
+	codeSectionNameLen: u8
+	destOffset: u16 ; offset in selected section
+}[],
+RelativeLabelDest: {
+	labelOffset: u16
+	labelName: u16
+	codeSectionName: u16
+	codeSectionNameLen: u8
+	destOffset: u16 ; offset in selected section
+}[],
+AbsolutePositionsToBeOffset: { ; add sections start position to each of these 16 bit values
+	codeSectionName: u16
+	codeSectionNameLen: u8
+	destOffset: u16 ; offset in selected section
+}[],
+LabelDestAbsolute
+Sections: [[u8]],
+Strings: [[u8]]

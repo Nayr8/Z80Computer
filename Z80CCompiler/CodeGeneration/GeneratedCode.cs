@@ -5,6 +5,10 @@ namespace Z80CCompiler.Assembling;
 public class GeneratedCode
 {
     public List<byte> Text { get; } = new();
+    public int BssSize { get; }
+    public List<byte> Data { get; } = new();
+
+
     public Dictionary<string, int> Labels { get; } = new ();
     private Dictionary<string, int> _tempLabels = new ();
     private List<(string, int)> _tempLabelPointer = new(); // Only absolute
