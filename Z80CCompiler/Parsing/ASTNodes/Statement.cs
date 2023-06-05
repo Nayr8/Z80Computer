@@ -1,10 +1,12 @@
+using Z80CCompiler.Parsing.ASTNodes.Expression;
+
 namespace Z80CCompiler.Parsing.ASTNodes;
 
 public class Statement
 {
-    public Expression Expression { get; }
+    public LogicalOrExpression Expression { get; }
 
-    public Statement(Expression expression)
+    public Statement(LogicalOrExpression expression)
     {
         Expression = expression;
     }

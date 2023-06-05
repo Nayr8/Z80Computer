@@ -1,4 +1,5 @@
 using Z80CCompiler.Parsing.ASTNodes;
+using Z80CCompiler.Parsing.ASTNodes.Expression;
 
 namespace Z80CCompiler.Assembling;
 
@@ -32,33 +33,130 @@ public class CodeGenerator
         _generatedCode.AddByte(0xC9);
     }
 
-    private void AssembleExpression(Expression expression)
+    private void AssembleExpression(LogicalOrExpression expression)
     {
         
         AssembleLogicalAndExpression(expression.LogicalAndExpression);
         foreach (LogicalAndExpression logicalAndExpression in expression.OrEqualityExpressions)
         {
-            // push af
-            _generatedCode.AddByte(0xF5);
+            string endLabel = _generatedCode.GenerateTempLabel();
+
+            // cp 0
+            _generatedCode.AddByte(0xFE);
+            _generatedCode.AddByte(0x00);
+            // jr nz, 5 ; second
+            _generatedCode.AddByte(0x28);
+            _generatedCode.AddByte(0x05);
+            // jp end ; unknown distance safer to use absolute TODO never mind change to jr as the position is not garanteed or make the label not tempory
+            _generatedCode.AddByte(0xC3);
+            _generatedCode.AddTempLabelPointer(endLabel);
+            // second:
+
             AssembleLogicalAndExpression(logicalAndExpression);
-            // pop bc
-            _generatedCode.AddByte(0xC1);
-            // TODO
+
+            // cp 0
+            _generatedCode.AddByte(0xFE);
+            _generatedCode.AddByte(0x00);
+            // ld a, 0 ; doesn't effect flags
+            _generatedCode.AddByte(0x3E);
+            _generatedCode.AddByte(0x00);
+            // jr nz, 4 ; end
+            _generatedCode.AddByte(0x20);
+            _generatedCode.AddByte(0x04);
+            // ld a, 1
+            _generatedCode.AddByte(0x3E);
+            _generatedCode.AddByte(0x01);
+            // end:
+            _generatedCode.AddTempLabel(endLabel);
         }
     }
 
     private void AssembleLogicalAndExpression(LogicalAndExpression expression)
     {
-        
+
+        AssembleBitwiseOrExpression(expression.BitwiseOrExpression);
+        foreach (BitwiseOrExpression bitwiseOrExpression in expression.BitwiseOrAndExpressions)
+        {
+            string endLabel = _generatedCode.GenerateTempLabel();
+
+            // cp 0
+            _generatedCode.AddByte(0xFE);
+            _generatedCode.AddByte(0x00);
+            // jr z, 7 ; second
+            _generatedCode.AddByte(0x20);
+            _generatedCode.AddByte(0x07);
+            // ld a, 1
+            _generatedCode.AddByte(0x3E);
+            _generatedCode.AddByte(0x01);
+            // jp end ; unknown distance safer to use absolute
+            _generatedCode.AddByte(0xC3);
+            _generatedCode.AddTempLabelPointer(endLabel);
+            // second:
+
+            AssembleBitwiseOrExpression(bitwiseOrExpression);
+
+            // cp 0
+            _generatedCode.AddByte(0xFE);
+            _generatedCode.AddByte(0x00);
+            // ld a, 0 ; doesn't effect flags
+            _generatedCode.AddByte(0x3E);
+            _generatedCode.AddByte(0x00);
+            // jr nz, 4 ; end
+            _generatedCode.AddByte(0x20);
+            _generatedCode.AddByte(0x04);
+            // ld a, 1
+            _generatedCode.AddByte(0x3E);
+            _generatedCode.AddByte(0x01);
+            // end:
+            _generatedCode.AddTempLabel(endLabel);
+        }
+    }
+
+    private void AssembleBitwiseOrExpression(BitwiseOrExpression expression)
+    {
+        AssembleBitwiseXorExpression(expression.BitwiseXorExpression);
+        foreach (BitwiseXorExpression bitwiseXorExpression in expression.BitwiseOrBitwiseXorExpressions)
+        {
+            // push af
+            _generatedCode.AddByte(0xF5);
+            AssembleBitwiseXorExpression(bitwiseXorExpression);
+            // pop bc
+            _generatedCode.AddByte(0xC1);
+
+            // or b
+            _generatedCode.AddByte(0xB0);
+        }
+    }
+
+    private void AssembleBitwiseXorExpression(BitwiseXorExpression expression)
+    {
+        AssembleBitwiseAndExpression(expression.BitwiseAndExpression);
+        foreach (BitwiseAndExpression bitwiseAndExpression in expression.BitwiseXorBitwiseAndExpressions)
+        {
+            // push af
+            _generatedCode.AddByte(0xF5);
+            AssembleBitwiseAndExpression(bitwiseAndExpression);
+            // pop bc
+            _generatedCode.AddByte(0xC1);
+
+            // xor b
+            _generatedCode.AddByte(0xA8);
+        }
+    }
+
+    private void AssembleBitwiseAndExpression(BitwiseAndExpression expression)
+    {
         AssembleEqualityExpression(expression.EqualityExpression);
-        foreach (EqualityExpression equalityExpression in expression.AndEqualityExpressions)
+        foreach (EqualityExpression equalityExpression in expression.BitwiseAndEqualityExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
             AssembleEqualityExpression(equalityExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
-            // TODO
+
+            // and b
+            _generatedCode.AddByte(0xA0);
         }
     }
 
@@ -264,6 +362,25 @@ public class CodeGenerator
                     _generatedCode.AddByte(0xFC);
                     // end: ld a, c
                     _generatedCode.AddByte(0x79);
+                    break;
+                case MulDivOp.Modulo: // a / b
+                    // zero c
+                    // minus b from a until 1 before overflow
+                    // ld c, 0
+                    _generatedCode.AddByte(0x0E);
+                    _generatedCode.AddByte(0x00);
+                    // loop: sub b
+                    _generatedCode.AddByte(0x90);
+                    // jr c, 5 ; end
+                    _generatedCode.AddByte(0x38);
+                    _generatedCode.AddByte(0x05);
+                    // inc c
+                    _generatedCode.AddByte(0x0C);
+                    // jr -4 ; loop
+                    _generatedCode.AddByte(0x18);
+                    _generatedCode.AddByte(0xFC);
+                    // end: add a, b
+                    _generatedCode.AddByte(0x80);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

@@ -1,4 +1,5 @@
 using Z80CCompiler.Parsing.ASTNodes;
+using Z80CCompiler.Parsing.ASTNodes.Expression;
 using Z80CCompiler.Parsing.ASTNodes.Factor;
 using Z80CCompiler.Parsing.Tokens;
 
@@ -63,14 +64,14 @@ public class Parser
     private Statement ParseStatement()
     {
         NextAssert<ReturnKeywordToken>();
-        Expression expression = ParseExpression();
+        LogicalOrExpression expression = ParseExpression();
         NextAssert<SemicolonToken>();
         return new Statement(expression);
     }
 
-    private Expression ParseExpression()
+    private LogicalOrExpression ParseExpression()
     {
-        Expression expression = new(ParseLogicalAndExpression());
+        LogicalOrExpression expression = new(ParseLogicalAndExpression());
         while (Peek() is OrToken)
         {
             Next();
@@ -82,14 +83,50 @@ public class Parser
 
     private LogicalAndExpression ParseLogicalAndExpression()
     {
-        LogicalAndExpression logicalAndExpression = new(ParseEqualityExpression());
+        LogicalAndExpression logicalAndExpression = new(ParseBitwiseOrExpression());
+        while (Peek() is AndToken)
+        {
+            Next();
+            BitwiseOrExpression bitwiseOrExpression = ParseBitwiseOrExpression();
+            logicalAndExpression.BitwiseOrAndExpressions.Add(bitwiseOrExpression);
+        }
+        return logicalAndExpression;
+    }
+
+    private BitwiseOrExpression ParseBitwiseOrExpression()
+    {
+        BitwiseOrExpression bitwiseOrExpression = new(ParseBitwiseXorExpression());
+        while (Peek() is AndToken)
+        {
+            Next();
+            BitwiseXorExpression bitwiseXorExpression = ParseBitwiseXorExpression();
+            bitwiseOrExpression.BitwiseOrBitwiseXorExpressions.Add(bitwiseXorExpression);
+        }
+        return bitwiseOrExpression;
+    }
+
+    private BitwiseXorExpression ParseBitwiseXorExpression()
+    {
+        BitwiseXorExpression bitwiseXorExpression = new(ParseBitwiseAndExpression());
+        while (Peek() is AndToken)
+        {
+            Next();
+            BitwiseAndExpression bitwiseAndExpression = ParseBitwiseAndExpression();
+            bitwiseXorExpression.BitwiseXorBitwiseAndExpressions.Add(bitwiseAndExpression);
+        }
+        return bitwiseXorExpression;
+    }
+
+    private BitwiseAndExpression ParseBitwiseAndExpression()
+    {
+        BitwiseAndExpression bitwiseAndExpression = new(ParseEqualityExpression());
         while (Peek() is AndToken)
         {
             Next();
             EqualityExpression relationalExpression = ParseEqualityExpression();
-            logicalAndExpression.AndEqualityExpressions.Add(relationalExpression);
+            bitwiseAndExpression.BitwiseAndEqualityExpressions.Add(relationalExpression);
         }
-        return logicalAndExpression;
+        return bitwiseAndExpression;
     }
 
     private EqualityExpression ParseEqualityExpression()
@@ -167,7 +204,7 @@ public class Parser
         switch (Next())
         {
             case LBracket:
-                Expression expression = ParseExpression();
+                LogicalOrExpression expression = ParseExpression();
                 NextAssert<RBracket>();
                 return expression;
             case LogicalNegationToken:

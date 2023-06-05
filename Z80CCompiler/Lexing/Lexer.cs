@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Z80CCompiler.Lexing.Tokens;
 using Z80CCompiler.Parsing.Tokens;
 
 namespace Z80CCompiler.Parsing;
@@ -34,6 +35,8 @@ public class Lexer
                 case '+': Consume(); Tokens.Add(new AdditionToken()); break;
                 case '*': Consume(); Tokens.Add(new MultiplicationToken()); break;
                 case '/': Consume(); Tokens.Add(new DivisionToken()); break;
+                case '%': Consume(); Tokens.Add(new ModuloToken()); break;
+                case '^': Consume(); Tokens.Add(new BitwiseXorToken()); break;
                 case '~': Consume(); Tokens.Add(new BitwiseComplementToken()); break;
                 case '!': Consume();
                     if (Peek() is '=')
@@ -44,27 +47,35 @@ public class Lexer
                     }
                     Tokens.Add(new LogicalNegationToken()); break;
                 case '<': Consume();
-                    if (Peek() is '=')
+                    switch (Peek())
                     {
-                        Consume();
-                        Tokens.Add(new LessThanEqualToken());
-                        break;
+                        case '=': Consume(); Tokens.Add(new LessThanEqualToken()); break;
+                        case '<': Consume(); Tokens.Add(new LeftShiftToken()); break;
                     }
                     Tokens.Add(new LessThanToken()); break;
                 case '>': Consume();
-                    if (Peek() is '=')
+                    switch (Peek())
                     {
-                        Consume();
-                        Tokens.Add(new GreaterThanEqualToken());
-                        break;
+                        case '=': Consume(); Tokens.Add(new GreaterThanEqualToken()); break;
+                        case '>': Consume(); Tokens.Add(new RightShiftToken()); break;
                     }
                     Tokens.Add(new GreaterThanToken()); break;
                 case '&': Consume();
-                    if (Peek() is not '&') throw new Exception("&");
-                    Consume(); Tokens.Add(new AndToken()); break;
+                    if (Peek() is '&')
+                    {
+                        Consume();
+                        Tokens.Add(new AndToken());
+                        break;
+                    }
+                    Tokens.Add(new BitwiseAndToken()); break;
                 case '|': Consume();
-                    if (Peek() is not '|') throw new Exception("|");
-                    Consume(); Tokens.Add(new OrToken()); break;
+                    if (Peek() is '|')
+                    {
+                        Consume();
+                        Tokens.Add(new OrToken());
+                        break;
+                    }
+                    Tokens.Add(new BitwiseOrToken()); break;
                 case '=': Consume();
                     if (Peek() is not '=') throw new Exception("=");
                     Consume(); Tokens.Add(new EqualToken()); break;

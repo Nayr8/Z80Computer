@@ -1,12 +1,14 @@
+using Z80CCompiler.Parsing.ASTNodes.Expression;
+
 namespace Z80CCompiler.Parsing.ASTNodes;
 
 public class LogicalAndExpression
 {
-    public EqualityExpression EqualityExpression { get; }
-    public List<EqualityExpression> AndEqualityExpressions = new();
+    public BitwiseOrExpression BitwiseOrExpression { get; }
+    public List<BitwiseOrExpression> BitwiseOrAndExpressions = new();
 
-    public LogicalAndExpression(EqualityExpression equalityExpression)
+    public LogicalAndExpression(BitwiseOrExpression bitwiseOrExpression)
     {
-        EqualityExpression = equalityExpression;
+        BitwiseOrExpression = bitwiseOrExpression;
     }
 }
