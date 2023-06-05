@@ -18,19 +18,15 @@
 <root> ::= <function>
 <function> ::= "int" <id> "(" ")" "{" <statement> "}"
 <statement> ::= "return" <exp> ";"
+
 <logical-or-exp> ::= <logical-and-exp> { "||" <logical-and-exp> }
-
 <logical-and-exp> ::= <bitwise-or-exp> { "&&" <bitwise-or-exp> }
-
 <bitwise-or-exp> ::= <bitwise-xor-exp> { "|" <bitwise-xor-exp> }
 <bitwise-xor-exp> ::= <bitwise-and-exp> { "^" <bitwise-and-exp> }
 <bitwise-and-exp> ::=<equality-exp> { "&" <equality-exp> }
-
 <equality-exp> ::= <relational-exp> { ("!=" | "==") <relational-exp> }
 <relational-exp> ::= <bit-shift-exp> { ("<" | ">" | "<=" | ">=") <bit-shift-exp> }
-
 <bit-shift-exp> ::= <additive-exp> { ("<<" | ">>") <additive-exp> }
-
 <additive-exp> ::= <term> { ("+" | "-") <term> }
 
 <term> ::= <factor> { ("*" | "/" | "%") <factor> }

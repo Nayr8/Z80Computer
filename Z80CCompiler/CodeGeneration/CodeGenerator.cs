@@ -13,30 +13,30 @@ public class CodeGenerator
         _ast = ast;
     }
 
-    public GeneratedCode Assemble()
+    public GeneratedCode Generate()
     {
-        AssembleFunction(_ast.Function);
+        GenerateFunction(_ast.Function);
         return _generatedCode;
     }
 
-    private void AssembleFunction(Function function)
+    private void GenerateFunction(Function function)
     {
         _generatedCode.AddLabel(function.Identifier);
-        AssembleStatement(function.Statement);
+        GenerateStatement(function.Statement);
     }
 
-    private void AssembleStatement(Statement statement)
+    private void GenerateStatement(Statement statement)
     {
-        AssembleExpression(statement.Expression);
+        GenerateExpression(statement.Expression);
         
         // ret
         _generatedCode.AddByte(0xC9);
     }
 
-    private void AssembleExpression(LogicalOrExpression expression)
+    private void GenerateExpression(LogicalOrExpression expression)
     {
         
-        AssembleLogicalAndExpression(expression.LogicalAndExpression);
+        GenerateLogicalAndExpression(expression.LogicalAndExpression);
         foreach (LogicalAndExpression logicalAndExpression in expression.OrEqualityExpressions)
         {
             string endLabel = _generatedCode.GenerateTempLabel();
@@ -52,7 +52,7 @@ public class CodeGenerator
             _generatedCode.AddTempLabelPointer(endLabel);
             // second:
 
-            AssembleLogicalAndExpression(logicalAndExpression);
+            GenerateLogicalAndExpression(logicalAndExpression);
 
             // cp 0
             _generatedCode.AddByte(0xFE);
@@ -71,10 +71,10 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleLogicalAndExpression(LogicalAndExpression expression)
+    private void GenerateLogicalAndExpression(LogicalAndExpression expression)
     {
 
-        AssembleBitwiseOrExpression(expression.BitwiseOrExpression);
+        GenerateBitwiseOrExpression(expression.BitwiseOrExpression);
         foreach (BitwiseOrExpression bitwiseOrExpression in expression.BitwiseOrAndExpressions)
         {
             string endLabel = _generatedCode.GenerateTempLabel();
@@ -93,7 +93,7 @@ public class CodeGenerator
             _generatedCode.AddTempLabelPointer(endLabel);
             // second:
 
-            AssembleBitwiseOrExpression(bitwiseOrExpression);
+            GenerateBitwiseOrExpression(bitwiseOrExpression);
 
             // cp 0
             _generatedCode.AddByte(0xFE);
@@ -112,14 +112,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleBitwiseOrExpression(BitwiseOrExpression expression)
+    private void GenerateBitwiseOrExpression(BitwiseOrExpression expression)
     {
-        AssembleBitwiseXorExpression(expression.BitwiseXorExpression);
+        GenerateBitwiseXorExpression(expression.BitwiseXorExpression);
         foreach (BitwiseXorExpression bitwiseXorExpression in expression.BitwiseOrBitwiseXorExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleBitwiseXorExpression(bitwiseXorExpression);
+            GenerateBitwiseXorExpression(bitwiseXorExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
 
@@ -128,14 +128,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleBitwiseXorExpression(BitwiseXorExpression expression)
+    private void GenerateBitwiseXorExpression(BitwiseXorExpression expression)
     {
-        AssembleBitwiseAndExpression(expression.BitwiseAndExpression);
+        GenerateBitwiseAndExpression(expression.BitwiseAndExpression);
         foreach (BitwiseAndExpression bitwiseAndExpression in expression.BitwiseXorBitwiseAndExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleBitwiseAndExpression(bitwiseAndExpression);
+            GenerateBitwiseAndExpression(bitwiseAndExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
 
@@ -144,14 +144,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleBitwiseAndExpression(BitwiseAndExpression expression)
+    private void GenerateBitwiseAndExpression(BitwiseAndExpression expression)
     {
-        AssembleEqualityExpression(expression.EqualityExpression);
+        GenerateEqualityExpression(expression.EqualityExpression);
         foreach (EqualityExpression equalityExpression in expression.BitwiseAndEqualityExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleEqualityExpression(equalityExpression);
+            GenerateEqualityExpression(equalityExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
 
@@ -160,14 +160,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleEqualityExpression(EqualityExpression expression)
+    private void GenerateEqualityExpression(EqualityExpression expression)
     {
-        AssembleRelationalExpression(expression.RelationalExpression);
+        GenerateRelationalExpression(expression.RelationalExpression);
         foreach ((EqualityOp op, RelationalExpression relationalExpression) in expression.EqualityRelationalExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleRelationalExpression(relationalExpression);
+            GenerateRelationalExpression(relationalExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
             switch (op)
@@ -210,14 +210,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleRelationalExpression(RelationalExpression expression)
+    private void GenerateRelationalExpression(RelationalExpression expression)
     {
-        AssembleAdditiveExpression(expression.AdditiveExpression);
+        GenerateAdditiveExpression(expression.AdditiveExpression);
         foreach ((RelationalOp op, AdditiveExpression additiveExpression) in expression.RelationalAdditiveExpressions)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleAdditiveExpression(additiveExpression);
+            GenerateAdditiveExpression(additiveExpression);
             // pop bc
             _generatedCode.AddByte(0xC1);
             switch (op)
@@ -299,14 +299,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleAdditiveExpression(AdditiveExpression expression)
+    private void GenerateAdditiveExpression(AdditiveExpression expression)
     {
-        AssembleTerm(expression.Term);
+        GenerateTerm(expression.Term);
         foreach ((AddSubOp op, Term term) in expression.AddSubTerms)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleTerm(term);
+            GenerateTerm(term);
             // pop bc
             _generatedCode.AddByte(0xC1);
             switch (op)
@@ -325,14 +325,14 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleTerm(Term term)
+    private void GenerateTerm(Term term)
     {
-        AssembleFactor(term.Factor);
+        GenerateFactor(term.Factor);
         foreach ((MulDivOp op, object factor) in term.MulDivFactors)
         {
             // push af
             _generatedCode.AddByte(0xF5);
-            AssembleFactor(factor);
+            GenerateFactor(factor);
             // pop bc
             _generatedCode.AddByte(0xC1);
             switch (op)
@@ -388,31 +388,31 @@ public class CodeGenerator
         }
     }
 
-    private void AssembleFactor(object factor)
+    private void GenerateFactor(object factor)
     {
         switch (factor)
         {
             case IntFactor integer:
-                AssembleIntegerFactor(integer.Integer); return;
+                GenerateIntegerFactor(integer.Integer); return;
             case UnaryFactor unaryFactor:
-                AssembleUnaryFactor(unaryFactor.UnaryOp);
-                AssembleFactor(unaryFactor.Factor);
+                GenerateUnaryFactor(unaryFactor.UnaryOp);
+                GenerateFactor(unaryFactor.Factor);
                 return;
-            case Expression expression:
-                AssembleExpression(expression); return;
+            case LogicalOrExpression expression:
+                GenerateExpression(expression); return;
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
-    private void AssembleIntegerFactor(int integer)
+    private void GenerateIntegerFactor(int integer)
     {
         // ld a, n
         _generatedCode.AddByte(0x3E);
         _generatedCode.AddByte((byte)integer);
     }
 
-    private void AssembleUnaryFactor(UnaryOp unaryOp)
+    private void GenerateUnaryFactor(UnaryOp unaryOp)
     {
         switch (unaryOp)
         {

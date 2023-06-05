@@ -20,5 +20,5 @@ Console.WriteLine("[{0}]", string.Join(", ", tokens));
 Parser parser = new(tokens);
 AbstractSyntaxTree ast = parser.Parse();
 CodeGenerator codeGenerator = new(ast);
-GeneratedCode generatedCode = codeGenerator.Assemble();
+GeneratedCode generatedCode = codeGenerator.Generate();
 _ = 0;

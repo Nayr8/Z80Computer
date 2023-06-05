@@ -4,7 +4,7 @@ namespace Z80CCompiler.Assembling;
 
 public class GeneratedCode
 {
-    public List<byte> Code { get; } = new();
+    public List<byte> Text { get; } = new();
     public Dictionary<string, int> Labels { get; } = new ();
     private Dictionary<string, int> _tempLabels = new ();
     private List<(string, int)> _tempLabelPointer = new(); // Only absolute
@@ -14,18 +14,18 @@ public class GeneratedCode
 
     public void AddLabel(string label)
     {
-        Labels.Add(label, Code.Count);
+        Labels.Add(label, Text.Count);
     }
 
     public void AddByte(byte value)
     {
-        Code.Add(value);
+        Text.Add(value);
     }
 
     public void AddWord(ushort value)
     {
-        Code.Add((byte)value);
-        Code.Add((byte)(value >> 8));
+        Text.Add((byte)value);
+        Text.Add((byte)(value >> 8));
     }
 
     public string GenerateTempLabel()
@@ -37,12 +37,12 @@ public class GeneratedCode
 
     public void AddTempLabel(string label)
     {
-        _tempLabels.Add(label, Code.Count);
+        _tempLabels.Add(label, Text.Count);
     }
 
     public void AddTempLabelPointer(string label)
     {
-        _tempLabelPointer.Add((label, Code.Count));
+        _tempLabelPointer.Add((label, Text.Count));
         AddWord(0x0000); // Temp val
     }
 
@@ -52,8 +52,8 @@ public class GeneratedCode
         {
             if (_tempLabels.TryGetValue(label, out int labelPosition))
             {
-                Code[source] = (byte)labelPosition;
-                Code[source + 1] = (byte)(labelPosition >> 8);
+                Text[source] = (byte)labelPosition;
+                Text[source + 1] = (byte)(labelPosition >> 8);
             } else
             {
                 throw new Exception(); // TODO better errors
