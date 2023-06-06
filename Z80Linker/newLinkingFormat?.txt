@@ -1,0 +1,34 @@
+LinkerHeader    linkerHeader
+Section[]       sectionHeaderTable
+
+// All offsets are from the begining of the file
+
+struct LinkerHeader {
+    byte[6]     "LINKER"
+    byte        version
+    byte        sectionEntries
+}
+
+struct Section {
+    word        sectionLength (including header)
+    word        nameOffset
+    byte        type
+    word        sectionCodeOffset
+    word        sectionCodeLength
+    
+    byte        labelCount
+    Label[]     labels
+    byte        externalLabelCount
+    Label[]     externalLabels (label references)
+    byte        wordsToBeOffsetCount
+    word[]      wordsToBeOffsetLocation (offset from section code start)
+    
+    
+    byte[]      strings
+    byte[]      code
+}
+
+struct Label {
+    word        name
+    word        location (offset from section code start)
+}
