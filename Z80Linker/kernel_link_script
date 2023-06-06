@@ -1,0 +1,4 @@
+0x0000: (.init)
+0x0038: (.msk_intr)
+0x0066: (.non_msk_intr, .text)
+0x1800: (.bss)
