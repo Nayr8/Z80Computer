@@ -2,7 +2,7 @@ namespace Z80Linker;
 
 public class ObjectFile
 {
-    public List<Section> Sections;
+    public Dictionary<string, Section?> Sections = new();
 
     public ObjectFile(byte[] file)
     {
@@ -10,9 +10,9 @@ public class ObjectFile
         int nextSection = 8;
         for (int i = 0; i < sectionEntries; ++i)
         {
-            Section section = new(file, nextSection);
+            Section? section = new(file, nextSection);
             nextSection = section.NextSectionOffset;
-            Sections.Add(section);
+            Sections.Add(section.Name, section);
         }
     }
 }

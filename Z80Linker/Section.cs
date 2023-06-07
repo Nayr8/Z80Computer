@@ -4,14 +4,14 @@ namespace Z80Linker;
 
 public class Section
 {
-    private string _name;
+    public string Name;
     private int _type;
 
-    private List<Label> _labels = new();
-    private List<Label> _externalLabels = new();
-    private List<int> _absolutePositionsToBeOffset = new();
+    public List<Label> Labels = new();
+    public List<Label> ExternalLabels = new();
+    public List<int> AbsolutePositionsToBeOffset = new();
 
-    private ArraySegment<byte> _code;
+    public ArraySegment<byte> Code;
 
     public int NextSectionOffset { get; }
 
@@ -21,13 +21,13 @@ public class Section
         NextSectionOffset = sectionOffset + sectionLength;
 
         int nameOffset = file[sectionOffset + 2] | (file[sectionOffset + 3] << 8);
-        _name = GetNullTerminatedString(file, nameOffset);
+        Name = GetNullTerminatedString(file, nameOffset);
         
         _type = file[sectionOffset + 4];
         
         int codeOffset = file[sectionOffset + 5] | (file[sectionOffset + 6] << 8);
         int codeLength = file[sectionOffset + 7] | (file[sectionOffset + 8] << 8);
-        _code = new ArraySegment<byte>(file, codeOffset, codeLength);
+        Code = new ArraySegment<byte>(file, codeOffset, codeLength);
 
         int labelCount = file[sectionOffset + 9];
         ParseLabels(file, labelCount, sectionOffset + 10);
@@ -48,7 +48,7 @@ public class Section
             int nameOffset = file[i] | (file[i + 1] << 8);
             string name = GetNullTerminatedString(file, nameOffset);
             int location = file[i + 2] | (file[i + 3] << 8);
-            _labels.Add(new Label(name, location));
+            Labels.Add(new Label(name, location));
         }
     }
 
@@ -59,7 +59,7 @@ public class Section
             int nameOffset = file[i] | (file[i + 1] << 8);
             string name = GetNullTerminatedString(file, nameOffset);
             int location = file[i + 2] | (file[i + 3] << 8);
-            _externalLabels.Add(new Label(name, location));
+            ExternalLabels.Add(new Label(name, location));
         }
     }
 
@@ -68,7 +68,7 @@ public class Section
         for (int i = offset; i < absolutePositionsToBeOffsetCount * 2; i += 2)
         {
             int localOffset = file[i] | (file[i + 1] << 8);
-            _absolutePositionsToBeOffset.Add(localOffset);
+            AbsolutePositionsToBeOffset.Add(localOffset);
         }
     }
 
