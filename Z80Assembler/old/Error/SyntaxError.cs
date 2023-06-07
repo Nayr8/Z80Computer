@@ -1,6 +1,6 @@
-using Z80Assembler.Token;
+using Z80Assembler.old.Token;
 
-namespace Z80Assembler.Error;
+namespace Z80Assembler.old.Error;
 
 public class SyntaxError
 {

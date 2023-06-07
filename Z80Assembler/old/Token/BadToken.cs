@@ -1,4 +1,4 @@
-namespace Z80Assembler.Token;
+namespace Z80Assembler.old.Token;
 
 public class BadToken : IToken
 {

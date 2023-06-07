@@ -1,4 +1,4 @@
-namespace Z80Assembler;
+namespace Z80Assembler.old;
 
 public class BuildStep
 {

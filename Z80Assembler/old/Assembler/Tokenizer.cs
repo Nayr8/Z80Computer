@@ -1,8 +1,8 @@
 using System.Globalization;
-using Z80Assembler.Error;
-using Z80Assembler.Token;
+using Z80Assembler.old.Error;
+using Z80Assembler.old.Token;
 
-namespace Z80Assembler;
+namespace Z80Assembler.old;
 
 public class Tokenizer
 {
