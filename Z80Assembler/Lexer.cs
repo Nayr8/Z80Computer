@@ -181,6 +181,7 @@ public class Lexer
         {"ixl", TokenType.Ixl},
         {"iyh", TokenType.Iyh},
         {"iyl", TokenType.Iyl},
+        {"sp", TokenType.Sp},
     };
 
     private void IdentifierOrKeywordToken(char first)

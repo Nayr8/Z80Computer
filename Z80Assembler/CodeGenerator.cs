@@ -1,6 +1,6 @@
 namespace Z80Assembler;
 
-public class OperandNode
+public class CodeGenerator
 {
     
 }

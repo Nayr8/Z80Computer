@@ -1,4 +1,4 @@
-namespace Z80Assembler;
+namespace Z80Assembler.Ast;
 
 public class DefineWordsNode
 {

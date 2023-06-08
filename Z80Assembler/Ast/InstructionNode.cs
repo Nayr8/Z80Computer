@@ -1,4 +1,4 @@
-namespace Z80Assembler;
+namespace Z80Assembler.Ast;
 
 public class InstructionNode
 {
@@ -6,6 +6,17 @@ public class InstructionNode
     public OperandNode? Operand1 { get; }
     public OperandNode? Operand2 { get; }
 
+    public InstructionNode(InstructionType type)
+    {
+        Type = type;
+    }
+    
+    public InstructionNode(InstructionType type, OperandNode operand1)
+    {
+        Type = type;
+        Operand1 = operand1;
+    }
+    
     public InstructionNode(InstructionType type, OperandNode operand1, OperandNode operand2)
     {
         Type = type;

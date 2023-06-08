@@ -107,6 +107,7 @@ public enum TokenType
     Ixl,
     Iyh,
     Iyl,
+    Sp,
     
     Nz,
     Nc,
@@ -116,3 +117,4 @@ public enum TokenType
     Pe,
     M,
 }
+
