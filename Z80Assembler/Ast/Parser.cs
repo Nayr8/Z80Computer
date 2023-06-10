@@ -31,74 +31,20 @@ public class Parser
         {
             switch (token.Type)
             {
-                case TokenType.Nop: ParseInstructionNoOperands(token); break;
-                case TokenType.Ld: break;
-                case TokenType.Inc: break;
-                case TokenType.Dec: break;
-                case TokenType.Rlca: ParseInstructionNoOperands(token); break;
-                case TokenType.Ex: break;
-                case TokenType.Add: break;
-                case TokenType.Rrca: ParseInstructionNoOperands(token); break;
-                case TokenType.Djnz: break;
-                case TokenType.Rla: ParseInstructionNoOperands(token); break;
-                case TokenType.Rra: ParseInstructionNoOperands(token); break;
-                case TokenType.Jr: break;
-                case TokenType.Daa: ParseInstructionNoOperands(token); break;
-                case TokenType.Cpl: ParseInstructionNoOperands(token); break;
-                case TokenType.Scf: ParseInstructionNoOperands(token); break;
-                case TokenType.Ccf: ParseInstructionNoOperands(token); break;
-                case TokenType.Halt: ParseInstructionNoOperands(token); break;
-                case TokenType.Adc: break;
-                case TokenType.Sub: break;
-                case TokenType.Sbc: break;
-                case TokenType.And: break;
-                case TokenType.Xor: break;
-                case TokenType.Or: break;
-                case TokenType.Cp: break;
-                case TokenType.Ret: break;
-                case TokenType.Pop: break;
-                case TokenType.Jp: break;
-                case TokenType.Call: break;
-                case TokenType.Push: break;
-                case TokenType.Rst: break;
-                case TokenType.Exx: ParseInstructionNoOperands(token); break;
-                case TokenType.In: break;
-                case TokenType.Di: ParseInstructionNoOperands(token); break;
-                case TokenType.Ei: ParseInstructionNoOperands(token); break;
-                case TokenType.Rlc: break;
-                case TokenType.Rrc: break;
-                case TokenType.Rl: break;
-                case TokenType.Rr: break;
-                case TokenType.Sla: break;
-                case TokenType.Sra: break;
-                case TokenType.Sll: break;
-                case TokenType.Srl: break;
-                case TokenType.Bit: break;
-                case TokenType.Res: break;
-                case TokenType.Set: break;
-                case TokenType.Neg: ParseInstructionNoOperands(token); break;
-                case TokenType.Retn: ParseInstructionNoOperands(token); break;
-                case TokenType.Im: break;
-                case TokenType.Reti: ParseInstructionNoOperands(token); break;
-                case TokenType.Rrd: ParseInstructionNoOperands(token); break;
-                case TokenType.Rld: ParseInstructionNoOperands(token); break;
-                case TokenType.Ldi: ParseInstructionNoOperands(token); break;
-                case TokenType.Cpi: ParseInstructionNoOperands(token); break;
-                case TokenType.Ini: ParseInstructionNoOperands(token); break;
-                case TokenType.Outi: ParseInstructionNoOperands(token); break;
-                case TokenType.Ldd: ParseInstructionNoOperands(token); break;
-                case TokenType.Cpd: ParseInstructionNoOperands(token); break;
-                case TokenType.Ind: ParseInstructionNoOperands(token); break;
-                case TokenType.Outd: ParseInstructionNoOperands(token); break;
-                case TokenType.Ldir: ParseInstructionNoOperands(token); break;
-                case TokenType.Cpir: ParseInstructionNoOperands(token); break;
-                case TokenType.Inir: ParseInstructionNoOperands(token); break;
-                case TokenType.Otir: ParseInstructionNoOperands(token); break;
-                case TokenType.Lddr: ParseInstructionNoOperands(token); break;
-                case TokenType.Cpdr: ParseInstructionNoOperands(token); break;
-                case TokenType.Indr: ParseInstructionNoOperands(token); break;
-                case TokenType.Otdr: ParseInstructionNoOperands(token); break;
-                case TokenType.LineEnd: break;
+                case TokenType.Nop or TokenType.Ld or TokenType.Inc or TokenType.Dec or TokenType.Rlca or TokenType.Ex
+                    or TokenType.Add or TokenType.Rrca or TokenType.Djnz or TokenType.Rla or TokenType.Rra or TokenType.Jr
+                    or TokenType.Daa or TokenType.Cpl or TokenType.Scf or TokenType.Ccf or TokenType.Halt or TokenType.Adc
+                    or TokenType.Sub or TokenType.Sbc or TokenType.And or TokenType.Xor or TokenType.Or or TokenType.Cp
+                    or TokenType.Ret or TokenType.Pop or TokenType.Jp or TokenType.Call or TokenType.Push or TokenType.Rst
+                    or TokenType.Exx or TokenType.In or TokenType.Di or TokenType.Ei or TokenType.Rlc or TokenType.Rrc
+                    or TokenType.Rl or TokenType.Rr or TokenType.Sla or TokenType.Sra or TokenType.Sll or TokenType.Srl
+                    or TokenType.Bit or TokenType.Res or TokenType.Set or TokenType.Neg or TokenType.Retn or TokenType.Im
+                    or TokenType.Reti or TokenType.Rrd or TokenType.Rld or TokenType.Ldi or TokenType.Cpi or TokenType.Ini
+                    or TokenType.Outi or TokenType.Ldd or TokenType.Cpd or TokenType.Ind or TokenType.Outd or TokenType.Ldir
+                    or TokenType.Cpir or TokenType.Inir or TokenType.Otir or TokenType.Lddr or TokenType.Cpdr or TokenType.Indr
+                    or TokenType.Otdr or TokenType.LineEnd: ParseInstruction(token); break;
+                case TokenType.Db: break;
+                case TokenType.Dw: break;
                 default:
                     _errors.Add(token.Line);
                     break;
@@ -117,69 +63,78 @@ public class Parser
         ConsumeLine();
     }
 
-    private void ParseInstructionNoOperands(Token instructionToken)
+    private void ParseInstruction(Token instruction)
     {
-        if (Next() is { Type: not TokenType.LineEnd } token)
-        {
-            _errors.Add(token.Line);
-            ConsumeLine();
-            return;
-        }
-
-        InstructionType? instructionType = instructionToken.Type.ToInstruction();
+        InstructionType? instructionType = instruction.Type.ToInstruction();
         if (instructionType is null) throw new ArgumentOutOfRangeException();
-        InstructionNode instructionNode = new(instructionType.Value);
-        _instructions.Add(instructionNode);
-    }
+        OperandNode? operand1 = null;
+        OperandNode? operand2 = null;
 
-    private void ParseLd(Token instruction)
-    {
-        OperandNode? firstOperand = ParseOperand(instruction);
-        if (firstOperand is null) return; // Error should have been handled in ParseOperand()
-
-        if (Peek() is { } token && token.Type is TokenType.Comma)
+        if (Peek() is { Type: not TokenType.LineEnd })
         {
-            Consume();
-        } else
-        {
-            ConsumeLine(); return;
+            operand1 = ParseOperand(instruction);
+            if (operand1 is null) return;
+            if (Peek() is { Type: not TokenType.LineEnd })
+            {
+                operand2 = ParseOperand(instruction);
+                if (operand2 is null) return;
+            }
         }
-
-        OperandNode? secondOperand = ParseOperand(instruction);
-        if (secondOperand is null) return; // Error should have been handled in ParseOperand()
-
-        bool valid = (firstOperand)
+        InstructionNode instructionNode = new(instructionType.Value, operand1, operand2);
+        _instructions.Add(instructionNode);
     }
 
     private OperandNode? ParseOperand(Token instruction)
     {
-        Token? a = Peek();
-        if (a is null) { Error(instruction); return null; }
-        return a.Type switch
+        Token? next = Peek();
+        if (next is null) { Error(instruction); return null; }
+        return next.Type switch
         {
-            TokenType.LBracket => ParseAddressOperand(),
+            TokenType.LBracket => ParseAddressOperand(instruction),
 
+            TokenType.Nz or TokenType.Nc or TokenType.Po or TokenType.P or TokenType.Z or TokenType.Pe or TokenType.M =>
+                new OperandNode(next.Type.ToFlagCheck()!.Value),
+            
             TokenType.C => instruction.Type is TokenType.Ret or TokenType.Jp or TokenType.Jr or TokenType.Call
-                            ? new OperandNode(FlagCheckType.C) : new OperandNode(RegisterType.C),
+                            ? new OperandNode(FlagCheckType.C) : new OperandNode(RegisterType.C, false),
 
             TokenType.A or TokenType.B or TokenType.D or TokenType.E or TokenType.H or TokenType.L
             or TokenType.Bc or TokenType.De or TokenType.Hl or TokenType.Sp or TokenType.Ix or TokenType.Iy
-            or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl => new OperandNode(a.Type.ToRegisterType()!.Value),
+            or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl => new OperandNode(next.Type.ToRegisterType()!.Value, false),
 
-            TokenType.Identifier => new OperandNode(a.StringValue!, false),
+            TokenType.Identifier => new OperandNode(next.StringValue!, false),
 
-            _ => ParseNumberOperand(),
+            _ => ParseNumberOperand(instruction)
         };
     }
 
-    private OperandNode? ParseAddressOperand()
+    private OperandNode? ParseAddressOperand(Token instruction)
     {
         Consume();
-        throw new NotImplementedException();
+        Token? next = Peek();
+        if (next is null) { Error(instruction); return null; }
+
+        OperandNode? node = next.Type switch
+        {
+            TokenType.A or TokenType.B or TokenType.C or TokenType.D or TokenType.E or TokenType.H or TokenType.L
+                or TokenType.Bc or TokenType.De or TokenType.Hl or TokenType.Sp or TokenType.Ix or TokenType.Iy
+                or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl => new OperandNode(next.Type.ToRegisterType()!.Value, true),
+
+            TokenType.Identifier => new OperandNode(next.StringValue!, true),
+
+            _ => ParseNumberOperand(instruction)
+        };
+
+        if (Peek() is { Type: TokenType.RBracket }) return node;
+        Error(instruction); return null;
     }
 
-    private OperandNode? ParseNumberOperand()
+    private OperandNode? ParseNumberOperand(Token instruction) // TODO support maths
     {
-        throw new NotImplementedException();
+        if (Peek() is { Type: TokenType.Integer } token)
+        {
+            return new OperandNode(token.Integer, true);
+        }
+        Error(instruction); return null;
     }
 }

@@ -2,21 +2,22 @@ namespace Z80Assembler.Ast;
 
 public class OperandNode
 {
-    private bool _address;
+    public bool Address;
     public OperandType OperandType;
     public RegisterType? RegisterType;
     public string? Label;
+    public int? Integer;
 
 
 
-    public OperandNode(RegisterType register)
+    public OperandNode(RegisterType register, bool address)
     {
         OperandType = OperandType.Register;
     }
 
     public OperandNode(string label, bool address)
     {
-        _address = address;
+        Address = address;
         OperandType = OperandType.Label;
     }
 
@@ -27,7 +28,7 @@ public class OperandNode
 
     public OperandNode(int number, bool address)
     {
-        _address = address;
+        Address = address;
         OperandType = OperandType.Register;
     }
 }
