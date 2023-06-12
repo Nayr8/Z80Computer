@@ -24,7 +24,7 @@ public class Lexer
 
     private Lexer(string code)
     {
-        _code = code;
+        _code = code.ReplaceLineEndings("\n");
     }
 
     private void AddToken(TokenType tokenType)
@@ -33,6 +33,17 @@ public class Lexer
         {
             Type = tokenType,
             Line = _line
+        };
+        _tokens.Add(token);
+    }
+
+    private void AddLabelToken(string value)
+    {
+        Token token = new Token()
+        {
+            Type = TokenType.Label,
+            Line = _line,
+            StringValue = value
         };
         _tokens.Add(token);
     }
@@ -77,13 +88,13 @@ public class Lexer
             switch (next)
             {
                 case ',': AddToken(TokenType.Comma); break;
-                case ':': AddToken(TokenType.Colon); break;
                 case '(': AddToken(TokenType.LBracket); break;
                 case ')': AddToken(TokenType.RBracket); break;
                 case '+': AddToken(TokenType.Plus); break;
                 case '\n': AddToken(TokenType.LineEnd); NewLine(); break;
                 case '"': StringToken(); break;
-                case >= 'A' and <= 'Z' or >= 'a' and <= 'z' or '_': IdentifierOrKeywordToken(next); break;
+                case ' ': break;
+                case >= 'A' and <= 'Z' or >= 'a' and <= 'z' or '_' or '.': IdentifierOrKeywordToken(next); break;
                 case >= '0' and <= '9': IntegerToken(next); break;
                 default: AddToken(TokenType.Invalid); break;
             }
@@ -94,6 +105,7 @@ public class Lexer
 
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
+        {"section", TokenType.Section},
         {"nop", TokenType.Nop},
         {"ld", TokenType.Ld},
         {"inc", TokenType.Inc},
@@ -187,15 +199,21 @@ public class Lexer
     private void IdentifierOrKeywordToken(char first)
     {
         StringBuilder sb = new();
+        sb.Append(first);
         
-        while (Peek() is var next and (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '\''))
+        while (Peek() is var next and (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '\'' or '.'))
         {
             Consume();
             sb.Append(next);
         }
 
         string value = sb.ToString();
-        if (Keywords.TryGetValue(value, out TokenType keyword))
+        if (Peek() is ':')
+        {
+            Consume();
+            AddLabelToken(value);
+        }
+        else if (Keywords.TryGetValue(value, out TokenType keyword))
         {
             AddToken(keyword);
         }

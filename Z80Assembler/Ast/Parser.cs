@@ -6,17 +6,15 @@ public class Parser
 {
     private List<Token> _tokens;
     private int _cursor;
-    private List<InstructionNode> _instructions = new();
-    private HashSet<int> _errors = new();
+    public Dictionary<string, List<INode>> Instructions = new();
+    private string? _currentSection;
+    private HashSet<int> Errors = new();
+    public bool MissingSectionError = false;
 
-    public void Run(List<Token> tokens)
-    {
-        new Parser(tokens).Parse();
-    }
-
-    private Parser(List<Token> tokens)
+    public Parser(List<Token> tokens)
     {
         _tokens = tokens;
+        Parse();
     }
 
     private Token? Peek() => _cursor < _tokens.Count ? _tokens[_cursor] : null;
@@ -42,11 +40,15 @@ public class Parser
                     or TokenType.Reti or TokenType.Rrd or TokenType.Rld or TokenType.Ldi or TokenType.Cpi or TokenType.Ini
                     or TokenType.Outi or TokenType.Ldd or TokenType.Cpd or TokenType.Ind or TokenType.Outd or TokenType.Ldir
                     or TokenType.Cpir or TokenType.Inir or TokenType.Otir or TokenType.Lddr or TokenType.Cpdr or TokenType.Indr
-                    or TokenType.Otdr or TokenType.LineEnd: ParseInstruction(token); break;
-                case TokenType.Db: break;
-                case TokenType.Dw: break;
+                    or TokenType.Otdr: ParseInstruction(token); break;
+                case TokenType.Db: ParseDefineByte(token); break;
+                case TokenType.Dw: ParseDefineWord(token); break;
+                case TokenType.Section: ParseSectionDefine(token); break;
+                case TokenType.Label:
+                    AddInstruction(new LabelNode(token.StringValue!)); break;
+                case TokenType.LineEnd: break;
                 default:
-                    _errors.Add(token.Line);
+                    Errors.Add(token.Line);
                     break;
             }
         }
@@ -59,7 +61,7 @@ public class Parser
 
     private void Error(Token token)
     {
-        _errors.Add(token.Line);
+        Errors.Add(token.Line);
         ConsumeLine();
     }
 
@@ -76,35 +78,42 @@ public class Parser
             if (operand1 is null) return;
             if (Peek() is { Type: not TokenType.LineEnd })
             {
+                if (Peek() is not { Type: TokenType.Comma })
+                {
+                    Error(instruction);
+                    return;
+                }
+                Consume();
                 operand2 = ParseOperand(instruction);
                 if (operand2 is null) return;
             }
         }
         InstructionNode instructionNode = new(instructionType.Value, operand1, operand2);
-        _instructions.Add(instructionNode);
+        AddInstruction(instructionNode);
     }
 
     private OperandNode? ParseOperand(Token instruction)
     {
         Token? next = Peek();
         if (next is null) { Error(instruction); return null; }
-        return next.Type switch
+        switch (next.Type)
         {
-            TokenType.LBracket => ParseAddressOperand(instruction),
+            case TokenType.LBracket: Consume(); return ParseAddressOperand(instruction);
 
-            TokenType.Nz or TokenType.Nc or TokenType.Po or TokenType.P or TokenType.Z or TokenType.Pe or TokenType.M =>
-                new OperandNode(next.Type.ToFlagCheck()!.Value),
+            case TokenType.Nz or TokenType.Nc or TokenType.Po or TokenType.P or TokenType.Z or TokenType.Pe or TokenType.M:
+                Consume(); return new OperandNode(next.Type.ToFlagCheck()!.Value);
             
-            TokenType.C => instruction.Type is TokenType.Ret or TokenType.Jp or TokenType.Jr or TokenType.Call
-                            ? new OperandNode(FlagCheckType.C) : new OperandNode(RegisterType.C, false),
+            case TokenType.C: Consume(); return instruction.Type is TokenType.Ret or TokenType.Jp or TokenType.Jr or TokenType.Call
+                            ? new OperandNode(FlagCheckType.C) : new OperandNode(RegisterType.C, false);
 
-            TokenType.A or TokenType.B or TokenType.D or TokenType.E or TokenType.H or TokenType.L
+            case TokenType.A or TokenType.B or TokenType.D or TokenType.E or TokenType.H or TokenType.L
             or TokenType.Bc or TokenType.De or TokenType.Hl or TokenType.Sp or TokenType.Ix or TokenType.Iy
-            or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl => new OperandNode(next.Type.ToRegisterType()!.Value, false),
+            or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl:
+                Consume(); return new OperandNode(next.Type.ToRegisterType()!.Value, false);
 
-            TokenType.Identifier => new OperandNode(next.StringValue!, false),
+            case TokenType.Identifier: Consume(); return new OperandNode(next.StringValue!, false);
 
-            _ => ParseNumberOperand(instruction)
+            default: return ParseNumberOperand(instruction);
         };
     }
 
@@ -114,15 +123,17 @@ public class Parser
         Token? next = Peek();
         if (next is null) { Error(instruction); return null; }
 
-        OperandNode? node = next.Type switch
+        OperandNode? node;
+        switch (next.Type)
         {
-            TokenType.A or TokenType.B or TokenType.C or TokenType.D or TokenType.E or TokenType.H or TokenType.L
+            case TokenType.A or TokenType.B or TokenType.C or TokenType.D or TokenType.E or TokenType.H or TokenType.L
                 or TokenType.Bc or TokenType.De or TokenType.Hl or TokenType.Sp or TokenType.Ix or TokenType.Iy
-                or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl => new OperandNode(next.Type.ToRegisterType()!.Value, true),
+                or TokenType.Ixh or TokenType.Ixl or TokenType.Iyh or TokenType.Iyl: Consume();
+                node = new OperandNode(next.Type.ToRegisterType()!.Value, true); break;
 
-            TokenType.Identifier => new OperandNode(next.StringValue!, true),
+            case TokenType.Identifier: Consume(); node = new OperandNode(next.StringValue!, true); break;
 
-            _ => ParseNumberOperand(instruction)
+            default: node = ParseNumberOperand(instruction); break;
         };
 
         if (Peek() is { Type: TokenType.RBracket }) return node;
@@ -133,8 +144,91 @@ public class Parser
     {
         if (Peek() is { Type: TokenType.Integer } token)
         {
+            Consume();
             return new OperandNode(token.Integer, true);
         }
         Error(instruction); return null;
+    }
+
+    private void ParseDefineWord(Token instruction)
+    {
+        List<int> definedWords = new();
+        while (Peek() is { } token)
+        {
+            switch (token.Type)
+            {
+                case TokenType.Integer: Consume(); definedWords.Add(token.Integer); break; // TODO support labels here
+                default: Error(instruction); return;
+            }
+            if (Peek() is { Type: not TokenType.LineEnd } token2)
+            {
+                if (token2.Type is not TokenType.Comma)
+                {
+                    Error(instruction); return;
+                }
+                Consume();
+            }
+            else
+            {
+                break;
+            }
+        }
+        AddInstruction(new DefineWordsNode(definedWords));
+    }
+
+    private void ParseDefineByte(Token instruction)
+    {
+        List<(int?, string?)> definedBytes = new();
+        while (Peek() is { } token)
+        {
+            switch (token.Type)
+            {
+                case TokenType.String: Consume(); definedBytes.Add((null, token.StringValue)); break;
+                case TokenType.Integer: Consume(); definedBytes.Add((token.Integer, null)); break;
+                default: Error(instruction); return;
+            }
+            if (Peek() is { Type: not TokenType.LineEnd } token2)
+            {
+                if (token2.Type is not TokenType.Comma)
+                {
+                    Error(instruction); return;
+                }
+                Consume();
+            }
+            else
+            {
+                break;
+            }
+        }
+        AddInstruction(new DefineBytesNode(definedBytes));
+    }
+
+    private void ParseSectionDefine(Token instruction)
+    {
+        if (Peek() is { Type: TokenType.Identifier } token)
+        {
+            Consume();
+            _currentSection = token.StringValue;
+        }
+        else
+        {
+            Error(instruction);
+        }
+    }
+
+    private void AddInstruction(INode instruction)
+    {
+        if (_currentSection is null)
+        {
+            MissingSectionError = true;
+            return;
+        }
+        if (Instructions.TryGetValue(_currentSection, out List<INode> instructions))
+        {
+            instructions.Add(instruction);
+        } else
+        {
+            Instructions.Add(_currentSection, new List<INode>() { instruction });
+        }
     }
 }

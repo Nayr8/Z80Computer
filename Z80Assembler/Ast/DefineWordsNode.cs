@@ -1,6 +1,6 @@
 namespace Z80Assembler.Ast;
 
-public class DefineWordsNode
+public class DefineWordsNode : INode
 {
     public List<int> Words { get; }
 

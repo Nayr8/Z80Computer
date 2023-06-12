@@ -1,6 +1,6 @@
 namespace Z80Assembler.Ast;
 
-public class InstructionNode
+public class InstructionNode : INode
 {
     public InstructionType Type { get; }
     public OperandNode? Operand1 { get; }

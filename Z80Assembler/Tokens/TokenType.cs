@@ -8,11 +8,13 @@ public enum TokenType
     Identifier,
     String,
     Comma,
-    Colon,
     LBracket,
     RBracket,
     Plus,
     LineEnd,
+    Label,
+
+    Section,
 
     #region Instructions
 
